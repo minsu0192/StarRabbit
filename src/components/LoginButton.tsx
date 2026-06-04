@@ -12,12 +12,17 @@ export default function LoginButton({ user }: Props) {
   const supabase = createClient();
 
   const handleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) alert(`로그인 오류: ${error.message}`);
+    } catch (e) {
+      alert(`오류: ${e}`);
+    }
   };
 
   const handleLogout = async () => {
