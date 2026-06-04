@@ -18,7 +18,15 @@ export default async function Home({ searchParams }: Props) {
   const sortOption = (['score', 'popular', 'latest'].includes(sort ?? '') ? sort : 'score') as SortOption;
   const webtoons = await getWebtoons(sortOption, platform, status);
 
-  const platformLabel = platform === 'naver' ? '네이버' : platform === 'kakao' ? '카카오' : null;
+  const platformLabel =
+    platform === 'naver' ? '네이버' :
+    platform === 'kakao' ? '카카오' :
+    platform === 'ridi' ? '리디' :
+    platform === 'lezhin' ? '레진' :
+    platform === 'bomtoon' ? '봄툰' :
+    platform === 'toomics' ? '투믹스' :
+    platform === 'etc' ? '기타' :
+    null;
   const statusLabel = status === 'ongoing' ? '연재중' : status === 'completed' ? '완결' : null;
 
   return (
@@ -53,7 +61,7 @@ export default async function Home({ searchParams }: Props) {
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {[platformLabel, statusLabel].filter(Boolean).join(' · ') || '전체 웹툰'}
           </p>
-          <p className="text-xs font-bold text-gray-800 dark:text-gray-100">{webtoons.length.toLocaleString()}개</p>
+          <p className="text-xs font-bold text-gray-800 dark:text-gray-100">표시 {webtoons.length.toLocaleString()}개</p>
         </div>
       </div>
 

@@ -3,6 +3,8 @@ import { Webtoon, WebtoonSource, WebtoonWithStats, SortOption, ReviewWithProfile
 
 const VALID_PLATFORMS = ['naver', 'kakao', 'ridi', 'lezhin', 'bomtoon', 'toomics', 'etc'];
 const VALID_STATUSES = ['ongoing', 'completed'];
+const LIST_LIMIT = 120;
+const SEARCH_LIMIT = 80;
 
 type WebtoonRowData = Webtoon & {
   reviews?: { score: number }[];
@@ -52,15 +54,37 @@ export async function getWebtoons(
 
   let query = supabase
     .from('webtoons')
-    .select(`*, reviews(score), webtoon_sources(*)`);
+    .select(platform && VALID_PLATFORMS.includes(platform)
+      ? `*, reviews(score), webtoon_sources!inner(*)`
+      : `*, reviews(score), webtoon_sources(*)`);
+
+  if (platform && VALID_PLATFORMS.includes(platform)) {
+    query = query.eq('webtoon_sources.platform', platform);
+  }
+
   if (status && VALID_STATUSES.includes(status)) {
     query = query.eq('status', status);
   }
 
+  if (sort === 'latest') {
+    query = query.order('created_at', { ascending: false });
+  } else {
+    query = query.order('title', { ascending: true });
+  }
+
+  query = query.limit(LIST_LIMIT);
+
   let { data, error } = await query;
 
   if (error?.message?.includes('webtoon_sources')) {
-    const fallback = await supabase.from('webtoons').select(`*, reviews(score)`);
+    let fallbackQuery = supabase.from('webtoons').select(`*, reviews(score)`);
+    if (status && VALID_STATUSES.includes(status)) {
+      fallbackQuery = fallbackQuery.eq('status', status);
+    }
+    fallbackQuery = fallbackQuery
+      .order(sort === 'latest' ? 'created_at' : 'title', { ascending: sort !== 'latest' })
+      .limit(LIST_LIMIT);
+    const fallback = await fallbackQuery;
     data = fallback.data;
     error = fallback.error;
   }
@@ -149,13 +173,17 @@ export async function searchWebtoons(query: string): Promise<WebtoonWithStats[]>
   const { data, error } = await supabase
     .from('webtoons')
     .select(`*, reviews(score), webtoon_sources(*)`)
-    .or(`title.ilike.%${safeQuery}%,author.ilike.%${safeQuery}%`);
+    .or(`title.ilike.%${safeQuery}%,author.ilike.%${safeQuery}%`)
+    .order('title', { ascending: true })
+    .limit(SEARCH_LIMIT);
 
   if (error?.message?.includes('webtoon_sources')) {
     const fallback = await supabase
       .from('webtoons')
       .select(`*, reviews(score)`)
-      .or(`title.ilike.%${safeQuery}%,author.ilike.%${safeQuery}%`);
+      .or(`title.ilike.%${safeQuery}%,author.ilike.%${safeQuery}%`)
+      .order('title', { ascending: true })
+      .limit(SEARCH_LIMIT);
     if (fallback.error || !fallback.data) return [];
     return fallback.data.map((w) => withStats(w));
   }
