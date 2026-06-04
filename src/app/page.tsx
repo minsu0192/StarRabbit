@@ -7,6 +7,7 @@ import WebtoonRow from '@/components/WebtoonRow';
 import SearchBar from '@/components/SearchBar';
 import SortChips from '@/components/SortChips';
 import BunnyMascot from '@/components/BunnyMascot';
+import Header from '@/components/Header';
 
 interface Props {
   searchParams: Promise<{ sort?: string }>;
@@ -21,15 +22,7 @@ export default async function Home({ searchParams }: Props) {
     <div className="flex flex-col min-h-screen max-w-2xl mx-auto w-full">
 
       {/* 헤더 */}
-      <header className="sticky top-0 z-10 bg-[var(--background)]/90 backdrop-blur border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <BunnyMascot size={28} />
-          <span className="font-black text-base tracking-tight">별토끼</span>
-        </div>
-        <button className="text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-          로그인
-        </button>
-      </header>
+      <Header />
 
       {/* 히어로 */}
       <section className="flex flex-col items-center pt-8 pb-6 px-4 text-center gap-3">

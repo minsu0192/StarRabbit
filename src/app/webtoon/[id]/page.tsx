@@ -1,0 +1,208 @@
+export const runtime = 'edge';
+
+import { notFound } from 'next/navigation';
+import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
+import { getWebtoon, getReviewsByWebtoon, getUserReview } from '@/lib/webtoons';
+import { ReviewWithProfile } from '@/types';
+import ScoreBadge from '@/components/ScoreBadge';
+import PlatformBadge from '@/components/PlatformBadge';
+import BunnyMascot from '@/components/BunnyMascot';
+import LoginButton from '@/components/LoginButton';
+import ReviewForm from '@/components/ReviewForm';
+
+interface Props {
+  params: Promise<{ id: string }>;
+}
+
+function getRank(total: number): { label: string; color: string } {
+  if (total >= 1000) return { label: '별토끼', color: 'text-amber-500' };
+  if (total >= 100)  return { label: '달토끼', color: 'text-blue-500' };
+  if (total >= 10)   return { label: '들토끼', color: 'text-green-500' };
+  return { label: '길토끼', color: 'text-gray-400' };
+}
+
+function formatDate(iso: string) {
+  return iso.slice(0, 10).replace(/-/g, '.');
+}
+
+export default async function WebtoonDetailPage({ params }: Props) {
+  const { id } = await params;
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const [webtoon, reviews, userReview] = await Promise.all([
+    getWebtoon(id),
+    getReviewsByWebtoon(id),
+    user ? getUserReview(id, user.id) : Promise.resolve(null),
+  ]);
+
+  if (!webtoon) notFound();
+
+  const userInfo = user
+    ? {
+        name: user.user_metadata?.name ?? user.email?.split('@')[0] ?? '유저',
+        avatarUrl: user.user_metadata?.avatar_url ?? null,
+      }
+    : null;
+
+  const scoreDistribution = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((s) => ({
+    score: s,
+    count: reviews.filter((r) => Math.floor(r.score) === s).length,
+  }));
+  const maxCount = Math.max(...scoreDistribution.map((d) => d.count), 1);
+
+  // 타인 리뷰 목록 (내 리뷰 제외)
+  const otherReviews = user
+    ? reviews.filter((r) => r.user_id !== user.id)
+    : reviews;
+
+  return (
+    <div className="flex flex-col min-h-screen max-w-2xl mx-auto w-full">
+
+      {/* 헤더 */}
+      <header className="sticky top-0 z-10 bg-[var(--background)]/90 backdrop-blur border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+            ← 뒤로
+          </Link>
+          <Link href="/" className="flex items-center gap-1.5">
+            <BunnyMascot size={22} />
+            <span className="font-black text-sm tracking-tight">별토끼</span>
+          </Link>
+        </div>
+        <LoginButton user={userInfo} />
+      </header>
+
+      {/* 웹툰 정보 */}
+      <section className="px-4 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <PlatformBadge platform={webtoon.platform} />
+          {webtoon.genre && (
+            <span className="text-xs text-gray-400 dark:text-gray-500">{webtoon.genre}</span>
+          )}
+          {webtoon.status && (
+            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+              webtoon.status === 'completed'
+                ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                : 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400'
+            }`}>
+              {webtoon.status === 'completed' ? '완결' : '연재중'}
+            </span>
+          )}
+        </div>
+        <h1 className="text-2xl font-black tracking-tight leading-tight mb-1">{webtoon.title}</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{webtoon.author}</p>
+      </section>
+
+      {/* 평점 요약 */}
+      <section className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
+        <div className="flex items-center gap-4">
+          <div className="text-center shrink-0">
+            <div className="text-4xl font-black tabular-nums leading-none mb-1">
+              {webtoon.avg_score !== null ? webtoon.avg_score.toFixed(1) : '−'}
+            </div>
+            <div className="text-xs text-gray-400">{webtoon.review_count.toLocaleString()}명 평가</div>
+          </div>
+
+          {webtoon.review_count > 0 && (
+            <div className="flex-1 space-y-0.5">
+              {scoreDistribution.map(({ score, count }) => (
+                <div key={score} className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-gray-400 w-3 tabular-nums">{score}</span>
+                  <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-amber-400"
+                      style={{ width: `${(count / maxCount) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-gray-400 w-3 tabular-nums text-right">{count > 0 ? count : ''}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 평점 남기기 */}
+      <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+        <h2 className="text-sm font-bold mb-3">
+          {user ? (userReview ? '내 한줄평' : '평점 남기기') : '평점 남기기'}
+        </h2>
+        {user ? (
+          <ReviewForm webtoonId={id} existingReview={userReview} />
+        ) : (
+          <LoginButtonSection />
+        )}
+      </section>
+
+      {/* 한줄평 목록 */}
+      <section className="flex-1 px-0">
+        <div className="px-4 py-3">
+          <h2 className="text-sm font-bold">
+            한줄평{otherReviews.length > 0 ? ` (${otherReviews.length})` : ''}
+          </h2>
+        </div>
+
+        {otherReviews.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-3 text-gray-400">
+            <BunnyMascot size={44} />
+            <p className="text-sm">아직 한줄평이 없어요</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+            {otherReviews.map((review) => (
+              <ReviewItem key={review.id} review={review} />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <footer className="py-6 text-center text-xs text-gray-300 dark:text-gray-700">
+        © 2026 별토끼
+      </footer>
+    </div>
+  );
+}
+
+function LoginButtonSection() {
+  return (
+    <div className="flex flex-col items-center gap-2 py-3">
+      <p className="text-sm text-gray-400">로그인하면 평점을 남길 수 있어요</p>
+      <LoginButton user={null} />
+    </div>
+  );
+}
+
+function ReviewItem({ review }: { review: ReviewWithProfile }) {
+  const rank = getRank(review.profiles?.total_recommends ?? 0);
+
+  return (
+    <li className="px-4 py-3.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+            <span className="text-sm font-semibold">{review.profiles?.nickname ?? '익명'}</span>
+            <span className={`text-[10px] font-medium ${rank.color}`}>{rank.label}</span>
+          </div>
+          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">
+            {review.comment}
+          </p>
+          <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">
+            <span>{formatDate(review.created_at)}</span>
+            {review.recommend_count > 0 && (
+              <>
+                <span>·</span>
+                <span>♥ {review.recommend_count}</span>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="shrink-0">
+          <ScoreBadge score={review.score} size="sm" />
+        </div>
+      </div>
+    </li>
+  );
+}

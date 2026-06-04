@@ -36,3 +36,7 @@ export interface Review {
 }
 
 export type SortOption = 'score' | 'popular' | 'latest';
+
+export interface ReviewWithProfile extends Omit<Review, 'profiles'> {
+  profiles: Pick<Profile, 'nickname' | 'total_recommends'>;
+}
