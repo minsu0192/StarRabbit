@@ -21,6 +21,14 @@ export default function AuthFeedback() {
 
       const timer = window.setTimeout(() => {
         setMessage('');
+        const next = window.sessionStorage.getItem('starrabbit:auth-next');
+        window.sessionStorage.removeItem('starrabbit:auth-next');
+
+        if (next && next.startsWith('/')) {
+          router.replace(next);
+          return;
+        }
+
         const url = new URL(window.location.href);
         url.searchParams.delete('auth');
         router.replace(`${url.pathname}${url.search}`);
@@ -30,8 +38,15 @@ export default function AuthFeedback() {
     }
 
     if (auth === 'failed') {
-      setMessage('로그인에 실패했습니다. 다시 시도해주세요.');
-      const timer = window.setTimeout(() => setMessage(''), 3000);
+      const reason = searchParams.get('reason');
+      setMessage(reason ? `로그인 실패: ${reason}` : '로그인에 실패했습니다. 다시 시도해주세요.');
+      const timer = window.setTimeout(() => {
+        setMessage('');
+        const url = new URL(window.location.href);
+        url.searchParams.delete('auth');
+        url.searchParams.delete('reason');
+        router.replace(`${url.pathname}${url.search}`);
+      }, 5000);
       return () => window.clearTimeout(timer);
     }
   }, [router, searchParams, supabase]);

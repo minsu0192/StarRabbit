@@ -6,8 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/';
-  const redirectTo = next.startsWith('/') ? next : '/';
+  const providerError = searchParams.get('error_description') ?? searchParams.get('error');
 
   if (code) {
     const supabase = await createClient();
@@ -28,11 +27,19 @@ export async function GET(request: Request) {
           );
       }
 
-      const target = new URL(`${origin}${redirectTo}`);
+      const target = new URL(origin);
       target.searchParams.set('auth', 'success');
       return NextResponse.redirect(target);
     }
+
+    const target = new URL(origin);
+    target.searchParams.set('auth', 'failed');
+    target.searchParams.set('reason', error.message);
+    return NextResponse.redirect(target);
   }
 
-  return NextResponse.redirect(`${origin}/?auth=failed`);
+  const target = new URL(origin);
+  target.searchParams.set('auth', 'failed');
+  if (providerError) target.searchParams.set('reason', providerError);
+  return NextResponse.redirect(target);
 }

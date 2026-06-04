@@ -51,10 +51,11 @@ export default function LoginButton({ user, compact = false }: Props) {
     try {
       const query = searchParams.toString();
       const next = `${pathname}${query ? `?${query}` : ''}`;
+      window.sessionStorage.setItem('starrabbit:auth-next', next);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+          redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: {
             access_type: 'offline',
             prompt: 'select_account',
