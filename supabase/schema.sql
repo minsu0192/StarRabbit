@@ -19,6 +19,28 @@ CREATE TABLE webtoons (
 -- 중복 제목 방지 (같은 제목+작가 조합)
 CREATE UNIQUE INDEX webtoons_title_author_unique ON webtoons (title, author);
 
+-- 웹툰 출처 테이블: 한 작품이 여러 플랫폼에 있을 수 있다.
+CREATE TABLE webtoon_sources (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  webtoon_id uuid NOT NULL REFERENCES webtoons(id) ON DELETE CASCADE,
+  platform text NOT NULL CHECK (platform IN ('naver', 'kakao', 'ridi', 'lezhin', 'bomtoon', 'toomics', 'etc')),
+  external_id text,
+  source_url text,
+  title text NOT NULL,
+  author text,
+  genre text,
+  status text CHECK (status IN ('ongoing', 'completed')),
+  last_seen_at timestamptz NOT NULL DEFAULT now(),
+  source_checked_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (platform, external_id),
+  UNIQUE (platform, source_url)
+);
+
+CREATE INDEX webtoon_sources_webtoon_id_idx ON webtoon_sources (webtoon_id);
+CREATE INDEX webtoon_sources_platform_idx ON webtoon_sources (platform);
+
 -- 유저 프로필 테이블 (Supabase auth.users와 1:1)
 CREATE TABLE profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -141,6 +163,7 @@ CREATE TRIGGER on_review_update
 -- ============================================
 
 ALTER TABLE webtoons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE webtoon_sources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recommends ENABLE ROW LEVEL SECURITY;
@@ -149,6 +172,9 @@ ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 -- webtoons: 읽기 공개, 쓰기 로그인 필요
 CREATE POLICY "webtoons_read" ON webtoons FOR SELECT USING (true);
 CREATE POLICY "webtoons_insert" ON webtoons FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+-- webtoon_sources: 읽기 공개, 쓰기는 운영 스크립트(service_role)에서만 사용
+CREATE POLICY "webtoon_sources_read" ON webtoon_sources FOR SELECT USING (true);
 
 -- profiles: 읽기 공개, 수정 본인만
 CREATE POLICY "profiles_read" ON profiles FOR SELECT USING (true);

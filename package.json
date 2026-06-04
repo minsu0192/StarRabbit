@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "audit:webtoons": "node --env-file=.env.local scripts/audit-webtoon-data.mjs"
+    "audit:webtoons": "node --env-file=.env.local scripts/audit-webtoon-data.mjs",
+    "backfill:sources": "node --env-file=.env.local scripts/backfill-webtoon-sources.mjs",
+    "sync:sources:naver": "node --env-file=.env.local scripts/sync-naver-sources.mjs",
+    "upsert:sources": "node --env-file=.env.local scripts/upsert-webtoon-sources.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

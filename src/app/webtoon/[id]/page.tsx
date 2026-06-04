@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getWebtoon, getReviewsByWebtoon, getUserReview } from '@/lib/webtoons';
 import { ReviewWithProfile } from '@/types';
 import ScoreBadge from '@/components/ScoreBadge';
-import PlatformBadge from '@/components/PlatformBadge';
+import PlatformBadge, { PlatformBadges } from '@/components/PlatformBadge';
 import BunnyMascot from '@/components/BunnyMascot';
 import LoginButton from '@/components/LoginButton';
 import ReviewForm from '@/components/ReviewForm';
@@ -80,7 +80,7 @@ export default async function WebtoonDetailPage({ params }: Props) {
 
       <section className="px-4 pt-6 pb-5 border-b border-gray-100 dark:border-gray-900">
         <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <PlatformBadge platform={webtoon.platform} />
+          <PlatformBadges platforms={webtoon.sources.map((source) => source.platform)} />
           {webtoon.genre && (
             <span className="text-xs text-gray-400 dark:text-gray-500">{webtoon.genre}</span>
           )}
@@ -96,6 +96,22 @@ export default async function WebtoonDetailPage({ params }: Props) {
         </div>
         <h1 className="mb-1 text-2xl font-black leading-tight tracking-tight">{webtoon.title}</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">{webtoon.author}</p>
+        {webtoon.sources.length > 1 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {webtoon.sources.map((source) => (
+              <a
+                key={source.id}
+                href={source.source_url ?? undefined}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-600 transition-colors hover:border-gray-400 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300"
+              >
+                <PlatformBadge platform={source.platform} />
+                <span>{source.title}</span>
+              </a>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="px-4 py-5 border-b border-gray-100 dark:border-gray-900">

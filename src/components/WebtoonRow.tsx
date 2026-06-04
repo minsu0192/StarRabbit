@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { WebtoonWithStats } from '@/types';
 import ScoreBadge from './ScoreBadge';
-import PlatformBadge from './PlatformBadge';
+import { PlatformBadges } from './PlatformBadge';
 
 interface Props {
   webtoon: WebtoonWithStats;
@@ -21,8 +21,9 @@ export default function WebtoonRow({ webtoon, rank }: Props) {
     'text-gray-300 dark:text-gray-600 font-bold';
 
   const platformAccent =
-    webtoon.platform === 'naver' ? 'border-l-[#03C75A]' :
-    webtoon.platform === 'kakao' ? 'border-l-[#FEE500]' :
+    webtoon.sources.some((source) => source.platform === 'naver') ? 'border-l-[#03C75A]' :
+    webtoon.sources.some((source) => source.platform === 'kakao') ? 'border-l-[#FEE500]' :
+    webtoon.sources.some((source) => source.platform === 'ridi') ? 'border-l-[#1f8ce6]' :
     'border-l-transparent';
 
   return (
@@ -44,7 +45,7 @@ export default function WebtoonRow({ webtoon, rank }: Props) {
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="truncate text-xs text-gray-500 dark:text-gray-400">{webtoon.author}</span>
             <span className="text-gray-300 dark:text-gray-700">·</span>
-            <PlatformBadge platform={webtoon.platform} />
+            <PlatformBadges platforms={webtoon.sources.map((source) => source.platform)} />
             {webtoon.genre && (
               <span className="truncate text-xs text-gray-400 dark:text-gray-500">{webtoon.genre}</span>
             )}

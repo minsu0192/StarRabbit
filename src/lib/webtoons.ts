@@ -1,10 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
-import { Webtoon, WebtoonWithStats, SortOption, ReviewWithProfile } from '@/types';
+import { Webtoon, WebtoonSource, WebtoonWithStats, SortOption, ReviewWithProfile } from '@/types';
 
-const VALID_PLATFORMS = ['naver', 'kakao', 'etc'];
+const VALID_PLATFORMS = ['naver', 'kakao', 'ridi', 'lezhin', 'bomtoon', 'toomics', 'etc'];
 const VALID_STATUSES = ['ongoing', 'completed'];
 
-type WebtoonRowData = Webtoon & { reviews?: { score: number }[] };
+type WebtoonRowData = Webtoon & {
+  reviews?: { score: number }[];
+  webtoon_sources?: WebtoonSource[];
+};
 type ReviewRowData = Omit<ReviewWithProfile, 'score'> & { score: number | string };
 
 function withStats(webtoon: WebtoonRowData): WebtoonWithStats {
@@ -12,12 +15,27 @@ function withStats(webtoon: WebtoonRowData): WebtoonWithStats {
   const avg_score = scores.length > 0
     ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
     : null;
-  const { reviews: _reviews, ...rest } = webtoon;
+  const { reviews: _reviews, webtoon_sources: webtoonSources, ...rest } = webtoon;
   void _reviews;
+  const fallbackSource: WebtoonSource = {
+    id: `${webtoon.id}-${webtoon.platform}`,
+    webtoon_id: webtoon.id,
+    platform: webtoon.platform,
+    external_id: null,
+    source_url: null,
+    title: webtoon.title,
+    author: webtoon.author,
+    status: webtoon.status,
+    genre: webtoon.genre,
+    last_seen_at: webtoon.created_at,
+    source_checked_at: null,
+  };
+
   return {
     ...rest,
     avg_score,
     review_count: scores.length,
+    sources: webtoonSources?.length ? webtoonSources : [fallbackSource],
   };
 }
 
@@ -32,19 +50,28 @@ export async function getWebtoons(
 ): Promise<WebtoonWithStats[]> {
   const supabase = await createClient();
 
-  let query = supabase.from('webtoons').select(`*, reviews(score)`);
-  if (platform && VALID_PLATFORMS.includes(platform)) {
-    query = query.eq('platform', platform);
-  }
+  let query = supabase
+    .from('webtoons')
+    .select(`*, reviews(score), webtoon_sources(*)`);
   if (status && VALID_STATUSES.includes(status)) {
     query = query.eq('status', status);
   }
 
-  const { data, error } = await query;
+  let { data, error } = await query;
+
+  if (error?.message?.includes('webtoon_sources')) {
+    const fallback = await supabase.from('webtoons').select(`*, reviews(score)`);
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error || !data) return [];
 
-  const webtoons = data.map((w) => withStats(w));
+  let webtoons = data.map((w) => withStats(w));
+
+  if (platform && VALID_PLATFORMS.includes(platform)) {
+    webtoons = webtoons.filter((webtoon) => webtoon.sources.some((source) => source.platform === platform));
+  }
 
   if (sort === 'score') {
     return webtoons.sort((a, b) => (b.avg_score ?? 0) - (a.avg_score ?? 0));
@@ -60,9 +87,19 @@ export async function getWebtoon(id: string): Promise<WebtoonWithStats | null> {
 
   const { data, error } = await supabase
     .from('webtoons')
-    .select(`*, reviews(score)`)
+    .select(`*, reviews(score), webtoon_sources(*)`)
     .eq('id', id)
     .single();
+
+  if (error?.message?.includes('webtoon_sources')) {
+    const fallback = await supabase
+      .from('webtoons')
+      .select(`*, reviews(score)`)
+      .eq('id', id)
+      .single();
+    if (fallback.error || !fallback.data) return null;
+    return withStats(fallback.data);
+  }
 
   if (error || !data) return null;
 
@@ -111,8 +148,17 @@ export async function searchWebtoons(query: string): Promise<WebtoonWithStats[]>
 
   const { data, error } = await supabase
     .from('webtoons')
-    .select(`*, reviews(score)`)
+    .select(`*, reviews(score), webtoon_sources(*)`)
     .or(`title.ilike.%${safeQuery}%,author.ilike.%${safeQuery}%`);
+
+  if (error?.message?.includes('webtoon_sources')) {
+    const fallback = await supabase
+      .from('webtoons')
+      .select(`*, reviews(score)`)
+      .or(`title.ilike.%${safeQuery}%,author.ilike.%${safeQuery}%`);
+    if (fallback.error || !fallback.data) return [];
+    return fallback.data.map((w) => withStats(w));
+  }
 
   if (error || !data) return [];
 

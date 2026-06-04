@@ -6,6 +6,10 @@ const PLATFORMS = [
   { value: '', label: '전체' },
   { value: 'naver', label: '네이버' },
   { value: 'kakao', label: '카카오' },
+  { value: 'ridi', label: '리디' },
+  { value: 'lezhin', label: '레진' },
+  { value: 'bomtoon', label: '봄툰' },
+  { value: 'toomics', label: '투믹스' },
   { value: 'etc', label: '기타' },
 ];
 
