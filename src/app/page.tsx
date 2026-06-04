@@ -11,14 +11,15 @@ import BunnyMascot from '@/components/BunnyMascot';
 import Header from '@/components/Header';
 
 interface Props {
-  searchParams: Promise<{ sort?: string; platform?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ sort?: string; platform?: string; status?: string; page?: string; size?: string; initial?: string }>;
 }
 
 export default async function Home({ searchParams }: Props) {
-  const { sort, platform, status, page } = await searchParams;
-  const sortOption = (['score', 'popular', 'latest'].includes(sort ?? '') ? sort : 'score') as SortOption;
+  const { sort, platform, status, page, size, initial } = await searchParams;
+  const sortOption = (['score', 'popular', 'latest', 'title'].includes(sort ?? '') ? sort : 'score') as SortOption;
   const currentPage = Math.max(Number(page ?? '1') || 1, 1);
-  const { items: webtoons, total, limit } = await getWebtoons(sortOption, platform, status, currentPage);
+  const pageSize = Number(size ?? '100') || 100;
+  const { items: webtoons, total, limit } = await getWebtoons(sortOption, platform, status, currentPage, pageSize, initial);
   const totalPages = Math.max(Math.ceil(total / limit), 1);
   const clampedPage = Math.min(currentPage, totalPages);
 
@@ -26,9 +27,6 @@ export default async function Home({ searchParams }: Props) {
     platform === 'naver' ? '네이버' :
     platform === 'kakao' ? '카카오' :
     platform === 'ridi' ? '리디' :
-    platform === 'lezhin' ? '레진' :
-    platform === 'bomtoon' ? '봄툰' :
-    platform === 'toomics' ? '투믹스' :
     platform === 'etc' ? '기타' :
     null;
   const statusLabel = status === 'ongoing' ? '연재중' : status === 'completed' ? '완결' : null;
@@ -37,6 +35,8 @@ export default async function Home({ searchParams }: Props) {
     if (sort && sort !== 'score') params.set('sort', sort);
     if (platform) params.set('platform', platform);
     if (status) params.set('status', status);
+    if (initial) params.set('initial', initial);
+    if (limit !== 100) params.set('size', String(limit));
     if (nextPage > 1) params.set('page', String(nextPage));
     const query = params.toString();
     return query ? `/?${query}` : '/';
@@ -72,7 +72,7 @@ export default async function Home({ searchParams }: Props) {
       <div className="px-4 pb-2">
         <div className="flex items-center justify-between border-y border-gray-100 py-2 dark:border-gray-900">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {[platformLabel, statusLabel].filter(Boolean).join(' · ') || '전체 웹툰'}
+            {[platformLabel, initial, statusLabel].filter(Boolean).join(' · ') || '전체 웹툰'}
           </p>
           <p className="text-xs font-bold text-gray-800 dark:text-gray-100">
             {total.toLocaleString()}개 중 {webtoons.length.toLocaleString()}개

@@ -7,9 +7,6 @@ const PLATFORMS = [
   { value: 'naver', label: '네이버' },
   { value: 'kakao', label: '카카오' },
   { value: 'ridi', label: '리디' },
-  { value: 'lezhin', label: '레진' },
-  { value: 'bomtoon', label: '봄툰' },
-  { value: 'toomics', label: '투믹스' },
   { value: 'etc', label: '기타' },
 ];
 
@@ -23,6 +20,18 @@ const SORTS = [
   { value: 'score', label: '평점순' },
   { value: 'popular', label: '인기순' },
   { value: 'latest', label: '최신순' },
+  { value: 'title', label: '가나다순' },
+];
+
+const INITIALS = [
+  { value: '', label: '전체' },
+  ...'ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ'.split('').map((label) => ({ value: label, label })),
+];
+
+const SIZES = [
+  { value: '50', label: '50개' },
+  { value: '100', label: '100개' },
+  { value: '200', label: '200개' },
 ];
 
 function ControlGroup({
@@ -47,11 +56,14 @@ export default function FilterBar() {
   const sort = sp.get('sort') ?? 'score';
   const platform = sp.get('platform') ?? '';
   const status = sp.get('status') ?? '';
+  const initial = sp.get('initial') ?? '';
+  const size = sp.get('size') ?? '100';
 
   const update = (key: string, value: string) => {
     const params = new URLSearchParams(sp.toString());
     if (value) params.set(key, value);
     else params.delete(key);
+    params.delete('page');
     const next = params.toString();
     router.push(next ? `/?${next}` : '/');
   };
@@ -80,9 +92,23 @@ export default function FilterBar() {
             </button>
           ))}
         </ControlGroup>
+        <ControlGroup label="초성">
+          {INITIALS.map(({ value, label }) => (
+            <button key={`i-${value}`} onClick={() => update('initial', value)} className={chip(initial === value)}>
+              {label}
+            </button>
+          ))}
+        </ControlGroup>
         <ControlGroup label="상태">
           {STATUSES.map(({ value, label }) => (
             <button key={`s-${value}`} onClick={() => update('status', value)} className={chip(status === value)}>
+              {label}
+            </button>
+          ))}
+        </ControlGroup>
+        <ControlGroup label="보기">
+          {SIZES.map(({ value, label }) => (
+            <button key={`z-${value}`} onClick={() => update('size', value === '100' ? '' : value)} className={chip(size === value || (!sp.get('size') && value === '100'))}>
               {label}
             </button>
           ))}

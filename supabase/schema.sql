@@ -23,7 +23,7 @@ CREATE UNIQUE INDEX webtoons_title_author_unique ON webtoons (title, author);
 CREATE TABLE webtoon_sources (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   webtoon_id uuid NOT NULL REFERENCES webtoons(id) ON DELETE CASCADE,
-  platform text NOT NULL CHECK (platform IN ('naver', 'kakao', 'ridi', 'lezhin', 'bomtoon', 'toomics', 'etc')),
+  platform text NOT NULL CHECK (platform IN ('naver', 'kakao', 'ridi', 'etc')),
   external_id text,
   source_url text,
   title text NOT NULL,

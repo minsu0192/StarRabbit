@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS public.webtoon_sources (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   webtoon_id uuid NOT NULL REFERENCES public.webtoons(id) ON DELETE CASCADE,
-  platform text NOT NULL CHECK (platform IN ('naver', 'kakao', 'ridi', 'lezhin', 'bomtoon', 'toomics', 'etc')),
+  platform text NOT NULL CHECK (platform IN ('naver', 'kakao', 'ridi', 'etc')),
   external_id text,
   source_url text,
   title text NOT NULL,

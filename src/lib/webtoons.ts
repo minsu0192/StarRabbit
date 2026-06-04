@@ -1,10 +1,27 @@
 import { createClient } from '@/lib/supabase/server';
 import { Webtoon, WebtoonSource, WebtoonWithStats, SortOption, ReviewWithProfile } from '@/types';
 
-const VALID_PLATFORMS = ['naver', 'kakao', 'ridi', 'lezhin', 'bomtoon', 'toomics', 'etc'];
+const VALID_PLATFORMS = ['naver', 'kakao', 'ridi', 'etc'];
 const VALID_STATUSES = ['ongoing', 'completed'];
-const LIST_LIMIT = 120;
+const DEFAULT_LIST_LIMIT = 100;
+const VALID_LIST_LIMITS = [50, 100, 200];
 const SEARCH_LIMIT = 80;
+const INITIAL_RANGES: Record<string, [string, string | null]> = {
+  'ㄱ': ['가', '나'],
+  'ㄴ': ['나', '다'],
+  'ㄷ': ['다', '라'],
+  'ㄹ': ['라', '마'],
+  'ㅁ': ['마', '바'],
+  'ㅂ': ['바', '사'],
+  'ㅅ': ['사', '아'],
+  'ㅇ': ['아', '자'],
+  'ㅈ': ['자', '차'],
+  'ㅊ': ['차', '카'],
+  'ㅋ': ['카', '타'],
+  'ㅌ': ['타', '파'],
+  'ㅍ': ['파', '하'],
+  'ㅎ': ['하', null],
+};
 
 type WebtoonRowData = Webtoon & {
   reviews?: { score: number }[];
@@ -45,16 +62,33 @@ function escapePostgrestPattern(value: string) {
   return value.replace(/[%,()]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function normalizeListLimit(limit?: number) {
+  return VALID_LIST_LIMITS.includes(Number(limit)) ? Number(limit) : DEFAULT_LIST_LIMIT;
+}
+
+function applyInitialFilter<T extends { gte: (column: string, value: string) => T; lt: (column: string, value: string) => T }>(
+  query: T,
+  initial?: string,
+) {
+  const range = initial ? INITIAL_RANGES[initial] : null;
+  if (!range) return query;
+  query = query.gte('title', range[0]);
+  return range[1] ? query.lt('title', range[1]) : query;
+}
+
 export async function getWebtoons(
   sort: SortOption = 'score',
   platform?: string,
   status?: string,
   page = 1,
+  limit?: number,
+  initial?: string,
 ): Promise<{ items: WebtoonWithStats[]; total: number; page: number; limit: number }> {
   const supabase = await createClient();
+  const safeLimit = normalizeListLimit(limit);
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
-  const from = (safePage - 1) * LIST_LIMIT;
-  const to = from + LIST_LIMIT - 1;
+  const from = (safePage - 1) * safeLimit;
+  const to = from + safeLimit - 1;
 
   let query = supabase
     .from('webtoons')
@@ -69,6 +103,7 @@ export async function getWebtoons(
   if (status && VALID_STATUSES.includes(status)) {
     query = query.eq('status', status);
   }
+  query = applyInitialFilter(query, initial);
 
   if (sort === 'latest') {
     query = query.order('created_at', { ascending: false });
@@ -76,14 +111,13 @@ export async function getWebtoons(
     query = query.order('title', { ascending: true });
   }
 
-  query = query.limit(LIST_LIMIT);
   query = query.range(from, to);
 
   let { data, error } = await query;
   let total = 0;
 
   if (!error) {
-    const countQuery = supabase
+    let countQuery = supabase
       .from('webtoons')
       .select(platform && VALID_PLATFORMS.includes(platform) ? `id, webtoon_sources!inner(*)` : 'id', {
         count: 'exact',
@@ -91,11 +125,12 @@ export async function getWebtoons(
       });
 
     if (platform && VALID_PLATFORMS.includes(platform)) {
-      countQuery.eq('webtoon_sources.platform', platform);
+      countQuery = countQuery.eq('webtoon_sources.platform', platform);
     }
     if (status && VALID_STATUSES.includes(status)) {
-      countQuery.eq('status', status);
+      countQuery = countQuery.eq('status', status);
     }
+    countQuery = applyInitialFilter(countQuery, initial);
 
     const { count } = await countQuery;
     total = count ?? data?.length ?? 0;
@@ -106,6 +141,7 @@ export async function getWebtoons(
     if (status && VALID_STATUSES.includes(status)) {
       fallbackQuery = fallbackQuery.eq('status', status);
     }
+    fallbackQuery = applyInitialFilter(fallbackQuery, initial);
     fallbackQuery = fallbackQuery
       .order(sort === 'latest' ? 'created_at' : 'title', { ascending: sort !== 'latest' })
       .range(from, to);
@@ -117,11 +153,12 @@ export async function getWebtoons(
     if (status && VALID_STATUSES.includes(status)) {
       fallbackCount = fallbackCount.eq('status', status);
     }
+    fallbackCount = applyInitialFilter(fallbackCount, initial);
     const { count } = await fallbackCount;
     total = count ?? data?.length ?? 0;
   }
 
-  if (error || !data) return { items: [], total: 0, page: safePage, limit: LIST_LIMIT };
+  if (error || !data) return { items: [], total: 0, page: safePage, limit: safeLimit };
 
   let webtoons = data.map((w) => withStats(w));
 
@@ -137,7 +174,7 @@ export async function getWebtoons(
     webtoons = webtoons.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
-  return { items: webtoons, total, page: safePage, limit: LIST_LIMIT };
+  return { items: webtoons, total, page: safePage, limit: safeLimit };
 }
 
 export async function getWebtoon(id: string): Promise<WebtoonWithStats | null> {
@@ -224,5 +261,33 @@ export async function searchWebtoons(query: string): Promise<WebtoonWithStats[]>
 
   if (error || !data) return [];
 
-  return data.map((w) => withStats(w));
+  const byId = new Map<string, WebtoonWithStats>();
+  for (const row of data.map((w) => withStats(w))) byId.set(row.id, row);
+
+  const { data: sourceMatches } = await supabase
+    .from('webtoon_sources')
+    .select('webtoon_id')
+    .or(`title.ilike.%${safeQuery}%,author.ilike.%${safeQuery}%`)
+    .limit(SEARCH_LIMIT);
+
+  const missingIds = [...new Set((sourceMatches ?? []).map((row) => row.webtoon_id))]
+    .filter((id) => !byId.has(id))
+    .slice(0, SEARCH_LIMIT);
+
+  if (missingIds.length > 0) {
+    const { data: sourceWebtoons } = await supabase
+      .from('webtoons')
+      .select(`*, reviews(score), webtoon_sources(*)`)
+      .in('id', missingIds)
+      .limit(SEARCH_LIMIT);
+
+    for (const row of sourceWebtoons ?? []) {
+      const webtoon = withStats(row);
+      byId.set(webtoon.id, webtoon);
+    }
+  }
+
+  return [...byId.values()]
+    .sort((a, b) => a.title.localeCompare(b.title, 'ko'))
+    .slice(0, SEARCH_LIMIT);
 }

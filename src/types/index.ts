@@ -1,4 +1,4 @@
-export type Platform = 'naver' | 'kakao' | 'ridi' | 'lezhin' | 'bomtoon' | 'toomics' | 'etc';
+export type Platform = 'naver' | 'kakao' | 'ridi' | 'etc';
 export type Status = 'ongoing' | 'completed';
 
 export interface Webtoon {
@@ -50,7 +50,7 @@ export interface Review {
   profiles?: Profile;
 }
 
-export type SortOption = 'score' | 'popular' | 'latest';
+export type SortOption = 'score' | 'popular' | 'latest' | 'title';
 
 export interface ReviewWithProfile extends Omit<Review, 'profiles'> {
   profiles: Pick<Profile, 'nickname' | 'total_recommends'>;

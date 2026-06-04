@@ -23,8 +23,9 @@ import { readFile } from 'node:fs/promises';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const inputPath = process.argv[2];
+const missingOnly = process.argv.includes('--missing-only');
 
-const VALID_PLATFORMS = new Set(['naver', 'kakao', 'ridi', 'lezhin', 'bomtoon', 'toomics', 'etc']);
+const VALID_PLATFORMS = new Set(['naver', 'kakao', 'ridi', 'etc']);
 const VALID_STATUSES = new Set(['ongoing', 'completed']);
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
@@ -44,7 +45,13 @@ const headers = {
 };
 
 function normalizeTitle(title) {
-  return String(title ?? '').replace(/\s+/g, '').trim().toLowerCase();
+  return String(title ?? '')
+    .normalize('NFKC')
+    .replace(/\[[^\]]*(?:단행본|개정판|완전판|완결|외전|소장판|컬러판|19세|15세)[^\]]*\]/gi, '')
+    .replace(/\([^)]*(?:단행본|개정판|완전판|완결|외전|소장판|컬러판|19세|15세)[^)]*\)/gi, '')
+    .replace(/[~!@#$%^&*_=+|\\:;"'<>,.?/`·ㆍ…\s-]/g, '')
+    .trim()
+    .toLowerCase();
 }
 
 function sanitizeRow(row) {
@@ -88,6 +95,25 @@ async function readAllWebtoons() {
   return rows;
 }
 
+async function readExistingSourceKeys() {
+  const rows = [];
+  let from = 0;
+  const pageSize = 1000;
+
+  while (true) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/webtoon_sources?select=platform,external_id&order=platform.asc`, {
+      headers: { ...headers, Range: `${from}-${from + pageSize - 1}` },
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const batch = await res.json();
+    rows.push(...batch);
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return new Set(rows.map((row) => `${row.platform}:${row.external_id}`));
+}
+
 async function insertWebtoon(row) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/webtoons`, {
     method: 'POST',
@@ -101,9 +127,29 @@ async function insertWebtoon(row) {
     }),
   });
 
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const message = await res.text();
+    if (message.includes('webtoons_title_author_unique')) {
+      const existing = await findWebtoonByTitleAuthor(row.title, row.author);
+      if (existing) return existing;
+    }
+    throw new Error(message);
+  }
   const [created] = await res.json();
   return created;
+}
+
+async function findWebtoonByTitleAuthor(title, author) {
+  const params = new URLSearchParams({
+    select: 'id,title,author,platform,genre,status',
+    title: `eq.${title}`,
+    author: `eq.${author}`,
+    limit: '1',
+  });
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/webtoons?${params}`, { headers });
+  if (!res.ok) throw new Error(await res.text());
+  const [row] = await res.json();
+  return row ?? null;
 }
 
 async function upsertSource(webtoon, row) {
@@ -127,7 +173,15 @@ async function upsertSource(webtoon, row) {
   if (!res.ok) throw new Error(await res.text());
 }
 
-const input = JSON.parse(await readFile(inputPath, 'utf8')).map(sanitizeRow);
+let input = JSON.parse(await readFile(inputPath, 'utf8')).map(sanitizeRow);
+if (missingOnly) {
+  const existingSourceKeys = await readExistingSourceKeys();
+  input = input.filter((row) => {
+    const externalId = row.external_id ?? row.source_url;
+    return externalId && !existingSourceKeys.has(`${row.platform}:${externalId}`);
+  });
+  console.log(`Missing-only mode: ${input.length} source rows to insert.`);
+}
 const webtoons = await readAllWebtoons();
 const byNormalizedTitle = new Map();
 

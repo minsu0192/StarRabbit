@@ -17,6 +17,40 @@ const SEED_URLS = [
   'https://page.kakao.com/menu/10010',
 ];
 const MENU_SCREEN_RE = /href="(\/menu\/100(?:00|10)\/screen\/\d+)"/g;
+const SEARCH_API = 'https://page.kakao.com/api/gateway/api/v2/search/series';
+const SEARCH_PAGE_SIZE = 50;
+const SEARCH_PAGES_PER_TERM = 4;
+const SEARCH_TERMS = [
+  '로맨스',
+  '로판',
+  '판타지',
+  '현판',
+  '무협',
+  '액션',
+  '드라마',
+  '학원',
+  '일상',
+  '개그',
+  '스릴러',
+  '공포',
+  'BL',
+  'GL',
+  '성인',
+  '회귀',
+  '환생',
+  '악녀',
+  '공작',
+  '대공',
+  '황제',
+  '먼치킨',
+  '게임',
+  '레벨',
+  '헌터',
+  '아이돌',
+  '계약',
+  '결혼',
+  '웹툰',
+];
 
 function extractNextData(html) {
   const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s);
@@ -37,6 +71,32 @@ async function fetchHtml(url) {
   const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
   if (!response.ok) throw new Error(`KakaoPage fetch failed ${response.status}: ${url}`);
   return response.text();
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+      'User-Agent': USER_AGENT,
+    },
+  });
+  if (!response.ok) throw new Error(`KakaoPage API failed ${response.status}: ${url}`);
+  return response.json();
+}
+
+function rowFromSearchItem(item) {
+  if (!item?.series_id || item.category_uid !== 10 || item.category !== '웹툰') return null;
+  if (!item.title || !item.authors) return null;
+
+  return {
+    platform: 'kakao',
+    title: String(item.title).trim(),
+    author: String(item.authors).replace(/,/g, ' / ').trim(),
+    external_id: String(item.series_id),
+    source_url: `https://page.kakao.com/content/${item.series_id}`,
+    genre: item.sub_category ? String(item.sub_category).trim() : null,
+    status: item.on_issue === 'N' || item.state === 'ST64' ? 'completed' : 'ongoing',
+  };
 }
 
 async function collectMenuUrls() {
@@ -81,6 +141,42 @@ async function collectSeriesIds() {
   return [...ids];
 }
 
+async function collectSearchRows() {
+  const rowsById = new Map();
+
+  for (const term of SEARCH_TERMS) {
+    for (const sortType of ['ACCURACY', 'LATEST']) {
+      for (let page = 0; page < SEARCH_PAGES_PER_TERM; page += 1) {
+        const url = new URL(SEARCH_API);
+        url.search = new URLSearchParams({
+          keyword: term,
+          category_uid: '10',
+          is_complete: 'false',
+          sort_type: sortType,
+          page: String(page),
+          size: String(SEARCH_PAGE_SIZE),
+        }).toString();
+
+        try {
+          const json = await fetchJson(url);
+          for (const item of json.result?.list ?? []) {
+            const row = rowFromSearchItem(item);
+            if (row) rowsById.set(row.external_id, row);
+          }
+          console.log(`search ${term}/${sortType}/${page}: rows=${rowsById.size}`);
+          if (json.result?.is_end) break;
+        } catch (error) {
+          console.warn(`skip search ${term}/${sortType}/${page}: ${error.message}`);
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+    }
+  }
+
+  return rowsById;
+}
+
 async function fetchSeries(seriesId) {
   const url = `https://page.kakao.com/content/${seriesId}`;
   const html = await fetchHtml(url);
@@ -107,20 +203,20 @@ async function fetchSeries(seriesId) {
 }
 
 const seriesIds = await collectSeriesIds();
-const rows = [];
+const rowsById = await collectSearchRows();
 
 for (const [index, seriesId] of seriesIds.entries()) {
   try {
     const row = await fetchSeries(seriesId);
-    if (row) rows.push(row);
+    if (row) rowsById.set(row.external_id, row);
   } catch (error) {
     console.warn(`skip ${seriesId}: ${error.message}`);
   }
-  if ((index + 1) % 20 === 0) console.log(`details ${index + 1}/${seriesIds.length}, rows=${rows.length}`);
+  if ((index + 1) % 20 === 0) console.log(`details ${index + 1}/${seriesIds.length}, rows=${rowsById.size}`);
   await new Promise((resolve) => setTimeout(resolve, 250));
 }
 
-rows.sort((a, b) => a.title.localeCompare(b.title, 'ko'));
+const rows = [...rowsById.values()].sort((a, b) => a.title.localeCompare(b.title, 'ko'));
 
 await mkdir('data/sources', { recursive: true });
 await writeFile(OUTPUT, `${JSON.stringify(rows, null, 2)}\n`);
