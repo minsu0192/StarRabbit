@@ -1,13 +1,6 @@
 import type { Metadata } from "next";
-import { Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
-
-const notoSansKR = Noto_Sans_KR({
-  subsets: ["latin"],
-  weight: ["400", "500", "700", "900"],
-  variable: "--font-noto",
-});
 
 export const metadata: Metadata = {
   title: "별토끼 — 진짜 웹툰 평점",
@@ -20,8 +13,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={`${notoSansKR.variable} h-full`}>
-      <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)] font-[family-name:var(--font-noto)] antialiased pb-16">
+    <html lang="ko" className="h-full">
+      <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)] antialiased pb-16">
         {children}
         <BottomNav />
       </body>

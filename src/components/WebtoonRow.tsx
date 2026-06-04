@@ -27,38 +27,32 @@ export default function WebtoonRow({ webtoon, rank }: Props) {
 
   return (
     <li>
-      <Link href={`/webtoon/${webtoon.id}`} className={`flex items-center gap-3 px-4 py-3.5 border-l-2 ${platformAccent} hover:bg-gray-50 dark:hover:bg-gray-900/60 active:bg-gray-100 dark:active:bg-gray-800 transition-colors`}>
-
-        {/* 순위 */}
-        <span className={`w-6 text-center text-sm tabular-nums shrink-0 ${rankColor}`}>
+      <Link href={`/webtoon/${webtoon.id}`} className={`flex items-center gap-3 border-l-2 px-4 py-3.5 ${platformAccent} transition-colors hover:bg-white active:bg-gray-100 dark:hover:bg-gray-950 dark:active:bg-gray-900`}>
+        <span className={`w-6 shrink-0 text-center text-sm tabular-nums ${rankColor}`}>
           {rank}
         </span>
 
-        {/* 정보 */}
         <div className="flex-1 min-w-0 space-y-0.5">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-semibold text-[15px] leading-snug">{webtoon.title}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-[15px] font-bold leading-snug">{webtoon.title}</span>
             {isPolarized && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400 font-medium shrink-0">
+              <span className="shrink-0 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-orange-700 dark:bg-orange-950 dark:text-orange-300">
                 호불호
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-400 dark:text-gray-500">{webtoon.author}</span>
-            <span className="text-gray-200 dark:text-gray-700">·</span>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-xs text-gray-500 dark:text-gray-400">{webtoon.author}</span>
+            <span className="text-gray-300 dark:text-gray-700">·</span>
             <PlatformBadge platform={webtoon.platform} />
             {webtoon.genre && (
-              <span className="text-xs text-gray-400 dark:text-gray-500">{webtoon.genre}</span>
+              <span className="truncate text-xs text-gray-400 dark:text-gray-500">{webtoon.genre}</span>
             )}
           </div>
         </div>
 
-        {/* 평점 */}
-        <div className="text-right shrink-0 space-y-0.5">
-          <div>
-            <ScoreBadge score={webtoon.avg_score} size="md" />
-          </div>
+        <div className="shrink-0 space-y-0.5 text-right">
+          <ScoreBadge score={webtoon.avg_score} size="md" />
           <div className="text-[11px] text-gray-400 dark:text-gray-500 tabular-nums">
             {webtoon.review_count > 0 ? `${webtoon.review_count.toLocaleString()}명` : '−'}
           </div>

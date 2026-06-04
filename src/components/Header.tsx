@@ -23,18 +23,22 @@ export default async function Header() {
     : null;
 
   return (
-    <header className="sticky top-0 z-10 bg-[var(--background)]/90 backdrop-blur border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex items-center justify-between">
-      <Link href="/" className="flex items-center gap-2">
-        <BunnyMascot size={28} />
-        <span className="font-black text-base tracking-tight">별토끼</span>
+    <header className="sticky top-0 z-10 border-b border-gray-100 bg-[var(--background)]/90 px-4 py-3 backdrop-blur dark:border-gray-900">
+      <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
+      <Link href="/" className="flex min-w-0 items-center gap-2">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-50 ring-1 ring-amber-100 dark:bg-amber-950/40 dark:ring-amber-900">
+          <BunnyMascot size={26} />
+        </span>
+        <span className="truncate text-base font-black tracking-tight">별토끼</span>
       </Link>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         {user && (
-          <Link href="/profile" className="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+          <Link href="/profile" className="hidden text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:hover:text-gray-100 min-[390px]:block">
             프로필
           </Link>
         )}
-        <LoginButton user={userInfo} />
+        <LoginButton user={userInfo} compact />
+      </div>
       </div>
     </header>
   );

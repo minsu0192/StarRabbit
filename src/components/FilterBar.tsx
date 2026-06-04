@@ -6,6 +6,7 @@ const PLATFORMS = [
   { value: '', label: '전체' },
   { value: 'naver', label: '네이버' },
   { value: 'kakao', label: '카카오' },
+  { value: 'etc', label: '기타' },
 ];
 
 const STATUSES = [
@@ -32,34 +33,32 @@ export default function FilterBar() {
     const params = new URLSearchParams(sp.toString());
     if (value) params.set(key, value);
     else params.delete(key);
-    router.push(`/?${params.toString()}`);
+    const next = params.toString();
+    router.push(next ? `/?${next}` : '/');
   };
 
   const chip = (active: boolean) =>
-    `text-xs px-3 py-1.5 rounded-full border font-medium transition-colors whitespace-nowrap ${
+    `h-8 rounded-md border px-3 text-xs font-semibold transition-colors whitespace-nowrap ${
       active
-        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
-        : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'
+        ? 'bg-gray-950 dark:bg-white text-white dark:text-gray-950 border-gray-950 dark:border-white'
+        : 'border-gray-200 bg-white text-gray-500 hover:border-gray-400 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-400 dark:hover:border-gray-600'
     }`;
 
   return (
-    <div className="space-y-2 px-4">
-      {/* 정렬 */}
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+    <div className="px-4">
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
         {SORTS.map(({ value, label }) => (
           <button key={value} onClick={() => update('sort', value)} className={chip(sort === value)}>
             {label}
           </button>
         ))}
-        <div className="w-px bg-gray-200 dark:bg-gray-700 mx-1 shrink-0" />
-        {/* 플랫폼 */}
+        <div className="mx-1 w-px shrink-0 bg-gray-200 dark:bg-gray-800" />
         {PLATFORMS.map(({ value, label }) => (
           <button key={`p-${value}`} onClick={() => update('platform', value)} className={chip(platform === value)}>
             {label}
           </button>
         ))}
-        <div className="w-px bg-gray-200 dark:bg-gray-700 mx-1 shrink-0" />
-        {/* 연재상태 */}
+        <div className="mx-1 w-px shrink-0 bg-gray-200 dark:bg-gray-800" />
         {STATUSES.map(({ value, label }) => (
           <button key={`s-${value}`} onClick={() => update('status', value)} className={chip(status === value)}>
             {label}

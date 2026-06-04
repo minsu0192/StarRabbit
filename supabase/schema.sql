@@ -65,11 +65,15 @@ CREATE TABLE reports (
 -- 구글 로그인 시 profiles 자동 생성
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS trigger AS $$
+DECLARE
+  base_nickname text;
 BEGIN
+  base_nickname := NULLIF(trim(COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1))), '');
+
   INSERT INTO profiles (id, nickname)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1))
+    left(COALESCE(base_nickname, '유저'), 8) || '-' || substr(NEW.id::text, 1, 4)
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
@@ -139,6 +143,7 @@ CREATE POLICY "webtoons_insert" ON webtoons FOR INSERT WITH CHECK (auth.uid() IS
 
 -- profiles: 읽기 공개, 수정 본인만
 CREATE POLICY "profiles_read" ON profiles FOR SELECT USING (true);
+CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id);
 
 -- reviews: 읽기 공개, 쓰기/수정/삭제 본인만

@@ -2,6 +2,13 @@
 
 import { createClient } from '@/lib/supabase/server';
 
+function normalizeScore(score: number) {
+  if (!Number.isFinite(score)) return null;
+  const rounded = Math.round(score * 2) / 2;
+  if (rounded < 1 || rounded > 10) return null;
+  return rounded;
+}
+
 export async function createOrUpdateReview(
   webtoonId: string,
   score: number,
@@ -11,8 +18,15 @@ export async function createOrUpdateReview(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: '로그인이 필요합니다' };
 
+  const safeScore = normalizeScore(score);
+  if (safeScore === null) return { error: '평점은 1.0점부터 10.0점까지 0.5점 단위로 입력해주세요' };
+
+  const trimmed = comment.trim().replace(/\s+/g, ' ');
+  if (trimmed.length < 2) return { error: '한줄평은 2자 이상 입력해주세요' };
+  if (trimmed.length > 200) return { error: '한줄평은 200자 이하여야 합니다' };
+
   const { error } = await supabase.from('reviews').upsert(
-    { webtoon_id: webtoonId, user_id: user.id, score, comment },
+    { webtoon_id: webtoonId, user_id: user.id, score: safeScore, comment: trimmed },
     { onConflict: 'webtoon_id,user_id' }
   );
 

@@ -61,22 +61,24 @@ export default async function WebtoonDetailPage({ params }: Props) {
   return (
     <div className="flex flex-col min-h-screen max-w-2xl mx-auto w-full">
 
-      {/* 헤더 */}
-      <header className="sticky top-0 z-10 bg-[var(--background)]/90 backdrop-blur border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-[var(--background)]/90 px-4 py-3 backdrop-blur dark:border-gray-900">
         <div className="flex items-center gap-3">
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
-            ← 뒤로
+          <Link href="/" className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition-colors hover:text-gray-900 dark:border-gray-800 dark:bg-gray-950 dark:hover:text-gray-100" aria-label="뒤로">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19 8 12l7-7" />
+            </svg>
           </Link>
           <Link href="/" className="flex items-center gap-1.5">
-            <BunnyMascot size={22} />
-            <span className="font-black text-sm tracking-tight">별토끼</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-amber-50 ring-1 ring-amber-100 dark:bg-amber-950/40 dark:ring-amber-900">
+              <BunnyMascot size={24} />
+            </span>
+            <span className="text-sm font-black tracking-tight">별토끼</span>
           </Link>
         </div>
-        <LoginButton user={userInfo} />
+        <LoginButton user={userInfo} compact />
       </header>
 
-      {/* 웹툰 정보 */}
-      <section className="px-4 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800">
+      <section className="px-4 pt-6 pb-5 border-b border-gray-100 dark:border-gray-900">
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <PlatformBadge platform={webtoon.platform} />
           {webtoon.genre && (
@@ -92,12 +94,11 @@ export default async function WebtoonDetailPage({ params }: Props) {
             </span>
           )}
         </div>
-        <h1 className="text-2xl font-black tracking-tight leading-tight mb-1">{webtoon.title}</h1>
+        <h1 className="mb-1 text-2xl font-black leading-tight tracking-tight">{webtoon.title}</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">{webtoon.author}</p>
       </section>
 
-      {/* 평점 요약 */}
-      <section className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
+      <section className="px-4 py-5 border-b border-gray-100 dark:border-gray-900">
         <div className="flex items-center gap-4">
           <div className="text-center shrink-0">
             <div className="text-4xl font-black tabular-nums leading-none mb-1">
@@ -125,8 +126,7 @@ export default async function WebtoonDetailPage({ params }: Props) {
         </div>
       </section>
 
-      {/* 평점 남기기 */}
-      <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+      <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-900">
         <h2 className="text-sm font-bold mb-3">
           {user ? (userReview ? '내 한줄평' : '평점 남기기') : '평점 남기기'}
         </h2>
@@ -137,7 +137,6 @@ export default async function WebtoonDetailPage({ params }: Props) {
         )}
       </section>
 
-      {/* 한줄평 목록 */}
       <section className="flex-1 px-0">
         <div className="px-4 py-3">
           <h2 className="text-sm font-bold">
@@ -151,7 +150,7 @@ export default async function WebtoonDetailPage({ params }: Props) {
             <p className="text-sm">아직 한줄평이 없어요</p>
           </div>
         ) : (
-          <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+          <ul className="divide-y divide-gray-100 dark:divide-gray-900">
             {otherReviews.map((review) => (
               <ReviewItem key={review.id} review={review} />
             ))}
