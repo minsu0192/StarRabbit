@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import AuthFeedback from "@/components/AuthFeedback";
 
 export const metadata: Metadata = {
   title: "별토끼 — 진짜 웹툰 평점",
@@ -15,6 +17,9 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full">
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)] antialiased pb-16">
+        <Suspense>
+          <AuthFeedback />
+        </Suspense>
         {children}
         <BottomNav />
       </body>

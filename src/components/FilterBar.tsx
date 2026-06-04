@@ -21,6 +21,21 @@ const SORTS = [
   { value: 'latest', label: '최신순' },
 ];
 
+function ControlGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[52px_1fr] items-center gap-2">
+      <span className="text-xs font-bold text-gray-400 dark:text-gray-500">{label}</span>
+      <div className="flex min-w-0 gap-1.5 overflow-x-auto">{children}</div>
+    </div>
+  );
+}
+
 export default function FilterBar() {
   const router = useRouter();
   const sp = useSearchParams();
@@ -46,24 +61,28 @@ export default function FilterBar() {
 
   return (
     <div className="px-4">
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
-        {SORTS.map(({ value, label }) => (
-          <button key={value} onClick={() => update('sort', value)} className={chip(sort === value)}>
-            {label}
-          </button>
-        ))}
-        <div className="mx-1 w-px shrink-0 bg-gray-200 dark:bg-gray-800" />
-        {PLATFORMS.map(({ value, label }) => (
-          <button key={`p-${value}`} onClick={() => update('platform', value)} className={chip(platform === value)}>
-            {label}
-          </button>
-        ))}
-        <div className="mx-1 w-px shrink-0 bg-gray-200 dark:bg-gray-800" />
-        {STATUSES.map(({ value, label }) => (
-          <button key={`s-${value}`} onClick={() => update('status', value)} className={chip(status === value)}>
-            {label}
-          </button>
-        ))}
+      <div className="space-y-2 rounded-md border border-gray-100 bg-white p-3 dark:border-gray-900 dark:bg-gray-950">
+        <ControlGroup label="정렬">
+          {SORTS.map(({ value, label }) => (
+            <button key={value} onClick={() => update('sort', value)} className={chip(sort === value)}>
+              {label}
+            </button>
+          ))}
+        </ControlGroup>
+        <ControlGroup label="플랫폼">
+          {PLATFORMS.map(({ value, label }) => (
+            <button key={`p-${value}`} onClick={() => update('platform', value)} className={chip(platform === value)}>
+              {label}
+            </button>
+          ))}
+        </ControlGroup>
+        <ControlGroup label="상태">
+          {STATUSES.map(({ value, label }) => (
+            <button key={`s-${value}`} onClick={() => update('status', value)} className={chip(status === value)}>
+              {label}
+            </button>
+          ))}
+        </ControlGroup>
       </div>
     </div>
   );

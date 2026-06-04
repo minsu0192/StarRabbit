@@ -2,11 +2,20 @@
 
 import { createClient } from '@/lib/supabase/client';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 
 interface Props {
   user: { name: string; avatarUrl: string | null } | null;
   compact?: boolean;
+}
+
+function getUserInfo(user: User | null) {
+  if (!user) return null;
+  return {
+    name: user.user_metadata?.name ?? user.email?.split('@')[0] ?? '유저',
+    avatarUrl: user.user_metadata?.avatar_url ?? null,
+  };
 }
 
 export default function LoginButton({ user, compact = false }: Props) {
@@ -14,7 +23,28 @@ export default function LoginButton({ user, compact = false }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, setPending] = useState(false);
-  const supabase = createClient();
+  const [currentUser, setCurrentUser] = useState(user);
+  const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) return;
+      const clientUser = getUserInfo(data.user);
+      if (clientUser) setCurrentUser(clientUser);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(getUserInfo(session?.user ?? null));
+      router.refresh();
+    });
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
+  }, [router, supabase]);
 
   const handleLogin = async () => {
     setPending(true);
@@ -41,30 +71,31 @@ export default function LoginButton({ user, compact = false }: Props) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    setCurrentUser(null);
     router.push('/');
     router.refresh();
   };
 
-  if (!user) {
+  if (!currentUser) {
     return (
       <button
         onClick={handleLogin}
         disabled={pending}
         className="inline-flex h-9 items-center justify-center rounded-md bg-gray-950 px-3 text-xs font-bold text-white transition-colors hover:bg-gray-800 disabled:opacity-60 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-200"
       >
-        {pending ? '연결 중' : compact ? '로그인' : 'Google 로그인'}
+        {pending ? '연결 중' : compact ? '로그인' : 'Google로 로그인'}
       </button>
     );
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      <div className="flex h-9 items-center gap-2 rounded-md border border-gray-200 bg-white px-2.5 dark:border-gray-800 dark:bg-gray-950">
+    <div className="flex min-w-0 items-center gap-1.5">
+      <div className="flex h-9 min-w-0 items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 dark:border-amber-900 dark:bg-amber-950/40">
         <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-400 text-[10px] font-black text-white">
-          {user.name.slice(0, 1)}
+          {currentUser.name.slice(0, 1)}
         </div>
-        <span className="max-w-[84px] truncate text-xs font-semibold text-gray-800 dark:text-gray-100">
-          {user.name}
+        <span className="max-w-[112px] truncate text-xs font-bold text-gray-900 dark:text-gray-100">
+          {currentUser.name}님
         </span>
       </div>
       <button
