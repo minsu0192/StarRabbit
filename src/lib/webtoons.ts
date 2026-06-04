@@ -1,15 +1,22 @@
 import { createClient } from '@/lib/supabase/server';
 import { WebtoonWithStats, SortOption, ReviewWithProfile } from '@/types';
 
-export async function getWebtoons(sort: SortOption = 'score'): Promise<WebtoonWithStats[]> {
+export async function getWebtoons(
+  sort: SortOption = 'score',
+  platform?: string,
+  status?: string,
+): Promise<WebtoonWithStats[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from('webtoons')
-    .select(`
-      *,
-      reviews(score)
-    `);
+  let query = supabase.from('webtoons').select(`*, reviews(score)`);
+  if (platform && ['naver', 'kakao', 'etc'].includes(platform)) {
+    query = query.eq('platform', platform);
+  }
+  if (status && ['ongoing', 'completed'].includes(status)) {
+    query = query.eq('status', status);
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) return [];
 

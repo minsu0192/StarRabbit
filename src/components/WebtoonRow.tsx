@@ -20,9 +20,14 @@ export default function WebtoonRow({ webtoon, rank }: Props) {
     rank === 3 ? 'text-orange-400 font-black' :
     'text-gray-300 dark:text-gray-600 font-bold';
 
+  const platformAccent =
+    webtoon.platform === 'naver' ? 'border-l-[#03C75A]' :
+    webtoon.platform === 'kakao' ? 'border-l-[#FEE500]' :
+    'border-l-transparent';
+
   return (
     <li>
-      <Link href={`/webtoon/${webtoon.id}`} className="flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-900/60 active:bg-gray-100 dark:active:bg-gray-800 transition-colors">
+      <Link href={`/webtoon/${webtoon.id}`} className={`flex items-center gap-3 px-4 py-3.5 border-l-2 ${platformAccent} hover:bg-gray-50 dark:hover:bg-gray-900/60 active:bg-gray-100 dark:active:bg-gray-800 transition-colors`}>
 
         {/* 순위 */}
         <span className={`w-6 text-center text-sm tabular-nums shrink-0 ${rankColor}`}>
