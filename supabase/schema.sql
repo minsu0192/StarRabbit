@@ -70,15 +70,24 @@ DECLARE
 BEGIN
   base_nickname := NULLIF(trim(COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1))), '');
 
-  INSERT INTO profiles (id, nickname)
+  INSERT INTO public.profiles (id, nickname)
   VALUES (
     NEW.id,
     left(COALESCE(base_nickname, '유저'), 8) || '-' || substr(NEW.id::text, 1, 4)
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
+EXCEPTION
+  WHEN unique_violation THEN
+    INSERT INTO public.profiles (id, nickname)
+    VALUES (NEW.id, '유저-' || substr(NEW.id::text, 1, 8))
+    ON CONFLICT (id) DO NOTHING;
+    RETURN NEW;
+  WHEN others THEN
+    -- 프로필 생성 실패가 Supabase Auth 가입 자체를 막지 않도록 한다.
+    RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
