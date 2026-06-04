@@ -10,6 +10,8 @@
     "audit:webtoons": "node --env-file=.env.local scripts/audit-webtoon-data.mjs",
     "backfill:sources": "node --env-file=.env.local scripts/backfill-webtoon-sources.mjs",
     "sync:sources:naver": "node --env-file=.env.local scripts/sync-naver-sources.mjs",
+    "collect:sources:kakao": "node scripts/collect-kakao-page-sources.mjs",
+    "collect:sources:ridi": "node scripts/collect-ridi-sources.mjs",
     "upsert:sources": "node --env-file=.env.local scripts/upsert-webtoon-sources.mjs"
   },
   "dependencies": {

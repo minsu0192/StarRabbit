@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { createOrUpdateReview, deleteReview } from '@/app/actions';
 import { ReviewWithProfile } from '@/types';
 
 interface Props {
@@ -21,6 +20,14 @@ function formatScore(score: number) {
   return Number.isFinite(value) ? value.toFixed(1) : '−';
 }
 
+async function parseReviewResponse(response: Response) {
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    return { error: payload?.error ?? '한줄평을 저장하지 못했습니다. 다시 시도해주세요.' };
+  }
+  return {};
+}
+
 export default function ReviewForm({ webtoonId, existingReview }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -33,7 +40,13 @@ export default function ReviewForm({ webtoonId, existingReview }: Props) {
     if (!comment.trim()) { setErrorMsg('한줄평을 입력해주세요'); return; }
     setErrorMsg('');
     startTransition(async () => {
-      const result = await createOrUpdateReview(webtoonId, score, comment.trim());
+      const result = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ webtoonId, score, comment: comment.trim() }),
+      })
+        .then(parseReviewResponse)
+        .catch(() => ({ error: '한줄평을 저장하지 못했습니다. 다시 시도해주세요.' }));
       if (result.error) { setErrorMsg(result.error); return; }
       setIsEditing(false);
       router.refresh();
@@ -44,7 +57,13 @@ export default function ReviewForm({ webtoonId, existingReview }: Props) {
     if (!existingReview) return;
     if (!confirm('한줄평을 삭제할까요?')) return;
     startTransition(async () => {
-      const result = await deleteReview(existingReview.id);
+      const result = await fetch('/api/reviews', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewId: existingReview.id }),
+      })
+        .then(parseReviewResponse)
+        .catch(() => ({ error: '한줄평을 삭제하지 못했습니다. 다시 시도해주세요.' }));
       if (result.error) { setErrorMsg(result.error); return; }
       setScore(7.0);
       setComment('');

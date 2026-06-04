@@ -13,10 +13,6 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const NAVER_WEEKDAY_API = 'https://comic.naver.com/api/webtoon/titlelist/weekday';
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-const VERIFIED_KAKAO_TITLES = new Set([
-  '나 혼자만 레벨업',
-  '데뷔 못 하면 죽는 병 걸림',
-]);
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
@@ -53,6 +49,32 @@ async function fetchDbWebtoons() {
   return rows;
 }
 
+async function fetchDbSources() {
+  const rows = [];
+  let from = 0;
+  const pageSize = 1000;
+
+  while (true) {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/webtoon_sources?select=*&order=platform.asc,title.asc`,
+      {
+        headers: {
+          apikey: SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+          Range: `${from}-${from + pageSize - 1}`,
+        },
+      }
+    );
+    if (!res.ok) throw new Error(`Supabase source read failed: ${await res.text()}`);
+    const batch = await res.json();
+    rows.push(...batch);
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return rows;
+}
+
 async function fetchNaverOngoingIndex() {
   const byTitle = new Map();
 
@@ -72,31 +94,37 @@ async function fetchNaverOngoingIndex() {
   return byTitle;
 }
 
-function printRows(title, rows) {
+function printRows(title, rows, limit = 50) {
   console.log(`\n${title} (${rows.length})`);
-  for (const row of rows) {
+  for (const row of rows.slice(0, limit)) {
     console.log(
       `- ${row.title} / ${row.author} / ${row.platform} / ${row.status} / reviews=${row.reviews?.length ?? 0} / ${row.id}`
     );
   }
+  if (rows.length > limit) console.log(`... and ${rows.length - limit} more`);
 }
 
 const rows = await fetchDbWebtoons();
+const sources = await fetchDbSources();
 const naverOngoing = await fetchNaverOngoingIndex();
 
 const counts = rows.reduce((acc, row) => {
   acc[row.platform] = (acc[row.platform] ?? 0) + 1;
   return acc;
 }, {});
+const sourceCounts = sources.reduce((acc, row) => {
+  acc[row.platform] = (acc[row.platform] ?? 0) + 1;
+  return acc;
+}, {});
 
-const byTitle = new Map();
-for (const row of rows) {
+const sourcesByTitle = new Map();
+for (const row of sources) {
   const key = normalizeTitle(row.title);
-  if (!byTitle.has(key)) byTitle.set(key, []);
-  byTitle.get(key).push(row);
+  if (!sourcesByTitle.has(key)) sourcesByTitle.set(key, []);
+  sourcesByTitle.get(key).push(row);
 }
 
-const crossPlatformDuplicates = [...byTitle.values()]
+const multiPlatformSourceTitles = [...sourcesByTitle.values()]
   .filter((group) => new Set(group.map((row) => row.platform)).size > 1)
   .flat();
 
@@ -105,19 +133,27 @@ const naverTitleButNotNaver = rows.filter(
 );
 
 const kakaoRows = rows.filter((row) => row.platform === 'kakao');
-const unverifiedKakaoRows = kakaoRows.filter((row) => !VERIFIED_KAKAO_TITLES.has(row.title));
+const sourceRowsMissingUrl = sources.filter((row) => !row.source_url);
+const missingUrlCounts = sourceRowsMissingUrl.reduce((acc, row) => {
+  acc[row.platform] = (acc[row.platform] ?? 0) + 1;
+  return acc;
+}, {});
 
 console.log('=== Webtoon Data Audit ===');
 console.log(`Total: ${rows.length}`);
 console.log('By platform:', counts);
+console.log(`Sources total: ${sources.length}`);
+console.log('Sources by platform:', sourceCounts);
+console.log('Sources missing source_url by platform:', missingUrlCounts);
 console.log(`Naver ongoing source index: ${naverOngoing.size}`);
 
-printRows('Cross-platform duplicate titles', crossPlatformDuplicates);
+printRows('Multi-platform source titles', multiPlatformSourceTitles);
 printRows('Rows found in Naver ongoing source but not marked naver', naverTitleButNotNaver);
 printRows('Kakao rows', kakaoRows);
-printRows('Unverified Kakao rows; manually verify before keeping', unverifiedKakaoRows);
+printRows('Source rows missing source_url', sourceRowsMissingUrl);
 
 console.log('\nNotes:');
 console.log('- Naver ongoing source is machine-checkable through the Naver public title list endpoint.');
-console.log('- Completed Naver titles and most Kakao/KakaoPage titles still need crawler or manual source URL verification.');
+console.log('- KakaoPage and Ridi rows are accepted when a public detail/source URL was collected.');
+console.log('- Missing source_url mostly means older completed/backfilled rows that have title metadata but no detail URL yet.');
 console.log('- Do not run scripts/seed-kakao.mjs for production data.');
