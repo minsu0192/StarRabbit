@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { getWebtoons } from '@/lib/webtoons';
 import { SortOption } from '@/types';
 import WebtoonRow from '@/components/WebtoonRow';
@@ -10,13 +11,16 @@ import BunnyMascot from '@/components/BunnyMascot';
 import Header from '@/components/Header';
 
 interface Props {
-  searchParams: Promise<{ sort?: string; platform?: string; status?: string }>;
+  searchParams: Promise<{ sort?: string; platform?: string; status?: string; page?: string }>;
 }
 
 export default async function Home({ searchParams }: Props) {
-  const { sort, platform, status } = await searchParams;
+  const { sort, platform, status, page } = await searchParams;
   const sortOption = (['score', 'popular', 'latest'].includes(sort ?? '') ? sort : 'score') as SortOption;
-  const webtoons = await getWebtoons(sortOption, platform, status);
+  const currentPage = Math.max(Number(page ?? '1') || 1, 1);
+  const { items: webtoons, total, limit } = await getWebtoons(sortOption, platform, status, currentPage);
+  const totalPages = Math.max(Math.ceil(total / limit), 1);
+  const clampedPage = Math.min(currentPage, totalPages);
 
   const platformLabel =
     platform === 'naver' ? '네이버' :
@@ -28,6 +32,15 @@ export default async function Home({ searchParams }: Props) {
     platform === 'etc' ? '기타' :
     null;
   const statusLabel = status === 'ongoing' ? '연재중' : status === 'completed' ? '완결' : null;
+  const pageHref = (nextPage: number) => {
+    const params = new URLSearchParams();
+    if (sort && sort !== 'score') params.set('sort', sort);
+    if (platform) params.set('platform', platform);
+    if (status) params.set('status', status);
+    if (nextPage > 1) params.set('page', String(nextPage));
+    const query = params.toString();
+    return query ? `/?${query}` : '/';
+  };
 
   return (
     <div className="flex flex-col min-h-screen max-w-2xl mx-auto w-full">
@@ -61,7 +74,9 @@ export default async function Home({ searchParams }: Props) {
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {[platformLabel, statusLabel].filter(Boolean).join(' · ') || '전체 웹툰'}
           </p>
-          <p className="text-xs font-bold text-gray-800 dark:text-gray-100">표시 {webtoons.length.toLocaleString()}개</p>
+          <p className="text-xs font-bold text-gray-800 dark:text-gray-100">
+            {total.toLocaleString()}개 중 {webtoons.length.toLocaleString()}개
+          </p>
         </div>
       </div>
 
@@ -74,11 +89,41 @@ export default async function Home({ searchParams }: Props) {
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-gray-900">
             {webtoons.map((webtoon, i) => (
-              <WebtoonRow key={webtoon.id} webtoon={webtoon} rank={i + 1} />
+              <WebtoonRow key={webtoon.id} webtoon={webtoon} rank={(clampedPage - 1) * limit + i + 1} />
             ))}
           </ul>
         )}
       </main>
+
+      {totalPages > 1 && (
+        <nav className="flex items-center justify-between border-t border-gray-100 px-4 py-4 dark:border-gray-900">
+          <Link
+            href={pageHref(Math.max(clampedPage - 1, 1))}
+            aria-disabled={clampedPage <= 1}
+            className={`rounded-md border px-3 py-2 text-sm font-semibold ${
+              clampedPage <= 1
+                ? 'pointer-events-none border-gray-100 text-gray-300 dark:border-gray-900 dark:text-gray-700'
+                : 'border-gray-200 text-gray-700 hover:border-gray-400 dark:border-gray-800 dark:text-gray-200'
+            }`}
+          >
+            이전
+          </Link>
+          <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+            {clampedPage.toLocaleString()} / {totalPages.toLocaleString()}
+          </span>
+          <Link
+            href={pageHref(Math.min(clampedPage + 1, totalPages))}
+            aria-disabled={clampedPage >= totalPages}
+            className={`rounded-md border px-3 py-2 text-sm font-semibold ${
+              clampedPage >= totalPages
+                ? 'pointer-events-none border-gray-100 text-gray-300 dark:border-gray-900 dark:text-gray-700'
+                : 'border-gray-200 text-gray-700 hover:border-gray-400 dark:border-gray-800 dark:text-gray-200'
+            }`}
+          >
+            다음
+          </Link>
+        </nav>
+      )}
 
       <footer className="py-6 text-center text-xs text-gray-300 dark:text-gray-700">
         © 2026 별토끼
