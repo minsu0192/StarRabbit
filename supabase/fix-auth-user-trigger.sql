@@ -53,3 +53,13 @@ BEGIN
   END IF;
 END;
 $$;
+
+INSERT INTO public.profiles (id, nickname)
+SELECT
+  u.id,
+  left(COALESCE(NULLIF(trim(u.raw_user_meta_data->>'name'), ''), split_part(u.email, '@', 1), '유저'), 8)
+    || '-' || substr(u.id::text, 1, 4)
+FROM auth.users u
+LEFT JOIN public.profiles p ON p.id = u.id
+WHERE p.id IS NULL
+ON CONFLICT (id) DO NOTHING;
