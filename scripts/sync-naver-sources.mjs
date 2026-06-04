@@ -102,6 +102,48 @@ async function upsertSource(webtoon, row) {
   if (!res.ok) throw new Error(await res.text());
 }
 
+async function readAllSources() {
+  const rows = [];
+  let from = 0;
+  const pageSize = 1000;
+
+  while (true) {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/webtoon_sources?select=id,webtoon_id,platform,source_url&order=id.asc`,
+      { headers: { ...headers, Range: `${from}-${from + pageSize - 1}` } }
+    );
+    if (!res.ok) throw new Error(await res.text());
+    const batch = await res.json();
+    rows.push(...batch);
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return rows;
+}
+
+async function deleteDuplicateFallbackSources() {
+  const rows = await readAllSources();
+  const hasVerifiedSource = new Set(
+    rows
+      .filter((row) => row.source_url)
+      .map((row) => `${row.webtoon_id}:${row.platform}`)
+  );
+  const targets = rows.filter(
+    (row) => !row.source_url && hasVerifiedSource.has(`${row.webtoon_id}:${row.platform}`)
+  );
+
+  for (const row of targets) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/webtoon_sources?id=eq.${row.id}`, {
+      method: 'DELETE',
+      headers: { ...headers, Prefer: 'return=minimal' },
+    });
+    if (!res.ok) throw new Error(await res.text());
+  }
+
+  return targets.length;
+}
+
 const sourceRows = await fetchNaverRows();
 const webtoons = await readAllWebtoons();
 const byTitle = new Map(webtoons.map((webtoon) => [normalizeTitle(webtoon.title), webtoon]));
@@ -120,4 +162,6 @@ for (const row of sourceRows) {
   linked++;
 }
 
-console.log(`Synced ${linked} Naver sources. Created ${created} canonical webtoon rows.`);
+const cleaned = await deleteDuplicateFallbackSources();
+
+console.log(`Synced ${linked} Naver sources. Created ${created} canonical webtoon rows. Cleaned ${cleaned} fallback rows.`);
