@@ -5,6 +5,7 @@ const VALID_PLATFORMS = ['naver', 'kakao', 'etc'];
 const VALID_STATUSES = ['ongoing', 'completed'];
 
 type WebtoonRowData = Webtoon & { reviews?: { score: number }[] };
+type ReviewRowData = Omit<ReviewWithProfile, 'score'> & { score: number | string };
 
 function withStats(webtoon: WebtoonRowData): WebtoonWithStats {
   const scores = (webtoon.reviews ?? []).map((r) => Number(r.score));
@@ -79,7 +80,10 @@ export async function getReviewsByWebtoon(webtoonId: string): Promise<ReviewWith
 
   if (error || !data) return [];
 
-  return data as ReviewWithProfile[];
+  return (data as ReviewRowData[]).map((review) => ({
+    ...review,
+    score: Number(review.score),
+  }));
 }
 
 export async function getUserReview(webtoonId: string, userId: string): Promise<ReviewWithProfile | null> {
@@ -93,7 +97,11 @@ export async function getUserReview(webtoonId: string, userId: string): Promise<
     .single();
 
   if (error || !data) return null;
-  return data as ReviewWithProfile;
+  const review = data as ReviewRowData;
+  return {
+    ...review,
+    score: Number(review.score),
+  };
 }
 
 export async function searchWebtoons(query: string): Promise<WebtoonWithStats[]> {

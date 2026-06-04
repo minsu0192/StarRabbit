@@ -16,6 +16,11 @@ function scoreColor(score: number) {
   return 'text-red-500';
 }
 
+function formatScore(score: number) {
+  const value = Number(score);
+  return Number.isFinite(value) ? value.toFixed(1) : '−';
+}
+
 export default function ReviewForm({ webtoonId, existingReview }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -55,7 +60,7 @@ export default function ReviewForm({ webtoonId, existingReview }: Props) {
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">내 한줄평</span>
           <span className={`text-lg font-black tabular-nums ${scoreColor(existingReview.score)}`}>
-            {existingReview.score.toFixed(1)}
+            {formatScore(existingReview.score)}
           </span>
         </div>
         <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-2">{existingReview.comment}</p>
@@ -86,7 +91,7 @@ export default function ReviewForm({ webtoonId, existingReview }: Props) {
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-gray-500">점수</span>
           <span className={`text-2xl font-black tabular-nums ${scoreColor(score)}`}>
-            {score.toFixed(1)}
+            {formatScore(score)}
           </span>
         </div>
         <input
