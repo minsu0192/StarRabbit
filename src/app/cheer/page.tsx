@@ -2,9 +2,6 @@ export const runtime = 'edge';
 
 import Header from '@/components/Header';
 import BunnyMascot from '@/components/BunnyMascot';
-import { POINT_LEVELS, POINT_RULES, getPointLevel } from '@/lib/points';
-
-const SAMPLE_LEVEL = getPointLevel(0);
 
 export default function CheerPage() {
   return (
@@ -31,36 +28,6 @@ export default function CheerPage() {
           <p>이벤트 종료 시 응원 댓글 수와 추천 수를 합산해 승리 작품을 정합니다.</p>
           <p>포인트는 실제 참여 기록 기준으로만 지급하고, 같은 이벤트에서는 중복 지급을 막습니다.</p>
         </div>
-      </section>
-
-      <section className="border-b border-gray-100 px-4 py-5 dark:border-gray-900">
-        <h2 className="mb-3 text-sm font-bold">포인트 지급</h2>
-        <div className="divide-y divide-gray-100 rounded-md border border-gray-100 dark:divide-gray-900 dark:border-gray-900">
-          {POINT_RULES.map((rule) => (
-            <div key={rule.label} className="grid grid-cols-[1fr_auto] gap-3 px-3 py-3">
-              <div className="min-w-0">
-                <p className="text-sm font-bold">{rule.label}</p>
-                <p className="mt-0.5 text-xs text-gray-400">{rule.description}</p>
-              </div>
-              <span className="text-sm font-black tabular-nums text-amber-500">+{rule.points}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="border-b border-gray-100 px-4 py-5 dark:border-gray-900">
-        <h2 className="mb-3 text-sm font-bold">승급 기준</h2>
-        <div className="space-y-2">
-          {POINT_LEVELS.map((level) => (
-            <div key={level.label} className="flex items-center justify-between rounded-md border border-gray-100 px-3 py-2 dark:border-gray-900">
-              <span className={`text-sm font-bold ${level.color}`}>{level.label}</span>
-              <span className="text-xs font-semibold text-gray-400">{level.min.toLocaleString()}점부터</span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-gray-400">
-          예: {SAMPLE_LEVEL.label}은 {SAMPLE_LEVEL.nextLabel}까지 {SAMPLE_LEVEL.remaining?.toLocaleString()}점 남음
-        </p>
       </section>
 
       <section className="px-4 py-5">

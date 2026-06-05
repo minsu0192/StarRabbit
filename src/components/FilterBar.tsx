@@ -20,10 +20,7 @@ const SORTS = [
   { value: 'featured', label: '기본순' },
   { value: 'score', label: '평점순' },
   { value: 'popular', label: '인기순' },
-  { value: 'weekly_score', label: '금주평점' },
-  { value: 'weekly_comments', label: '금주댓글' },
   { value: 'latest', label: '최신순' },
-  { value: 'title', label: '가나다순' },
 ];
 
 const GENRES = [
@@ -52,9 +49,10 @@ const INITIALS = [
 ];
 
 const SIZES = [
+  { value: '10', label: '10개' },
+  { value: '20', label: '20개' },
   { value: '50', label: '50개' },
   { value: '100', label: '100개' },
-  { value: '200', label: '200개' },
 ];
 
 function ControlGroup({
@@ -80,7 +78,7 @@ export default function FilterBar() {
   const platform = sp.get('platform') ?? '';
   const status = sp.get('status') ?? '';
   const initial = sp.get('initial') ?? '';
-  const size = sp.get('size') ?? '100';
+  const size = sp.get('size') ?? '20';
   const genre = sp.get('genre') ?? '';
   const audience = sp.get('audience') ?? '';
 
@@ -147,7 +145,7 @@ export default function FilterBar() {
         </ControlGroup>
         <ControlGroup label="보기">
           {SIZES.map(({ value, label }) => (
-            <button key={`z-${value}`} onClick={() => update('size', value === '100' ? '' : value)} className={chip(size === value || (!sp.get('size') && value === '100'))}>
+            <button key={`z-${value}`} onClick={() => update('size', value === '20' ? '' : value)} className={chip(size === value || (!sp.get('size') && value === '20'))}>
               {label}
             </button>
           ))}

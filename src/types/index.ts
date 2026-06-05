@@ -57,7 +57,7 @@ export interface Review {
   profiles?: Profile;
 }
 
-export type SortOption = 'featured' | 'score' | 'popular' | 'weekly_score' | 'weekly_comments' | 'latest' | 'title';
+export type SortOption = 'featured' | 'score' | 'popular' | 'weekly_score' | 'weekly_comments' | 'latest';
 
 export interface ReviewWithProfile extends Omit<Review, 'profiles'> {
   profiles: Pick<Profile, 'nickname' | 'total_recommends'>;

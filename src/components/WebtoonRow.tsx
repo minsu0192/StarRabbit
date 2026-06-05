@@ -23,7 +23,7 @@ function getScoreSignal(webtoon: WebtoonWithStats) {
     return { label: '테러 의심', className: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' };
   }
   if (tenRatio >= 0.45 || highRatio >= 0.75) {
-    return { label: '몰표 감지', className: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300' };
+    return { label: '10점 쏠림', className: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300' };
   }
 
   return null;

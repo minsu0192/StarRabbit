@@ -11,10 +11,13 @@ export const POINT_RULES = [
 
 export const POINT_LEVELS = [
   { label: '길토끼', min: 0, color: 'text-gray-400' },
-  { label: '들토끼', min: 100, color: 'text-green-500' },
+  { label: '풀토끼', min: 50, color: 'text-lime-500' },
+  { label: '들토끼', min: 150, color: 'text-green-500' },
   { label: '달토끼', min: 500, color: 'text-blue-500' },
   { label: '별토끼', min: 1500, color: 'text-amber-500' },
   { label: '은하토끼', min: 5000, color: 'text-fuchsia-500' },
+  { label: '우주토끼', min: 15000, color: 'text-violet-500' },
+  { label: '전설토끼', min: 50000, color: 'text-rose-500' },
 ];
 
 export function getPointLevel(points: number) {

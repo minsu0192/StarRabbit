@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import NicknameForm from '@/components/NicknameForm';
 import ScoreBadge from '@/components/ScoreBadge';
 import BunnyMascot from '@/components/BunnyMascot';
+import { POINT_LEVELS, POINT_RULES, getPointLevel } from '@/lib/points';
 
 function getRank(total: number): { label: string; color: string; next: string; needed: number | null } {
   if (total >= 1000) return { label: '별토끼', color: 'text-amber-500', next: '무지개토끼', needed: null };
@@ -20,11 +21,19 @@ export default async function ProfilePage() {
 
   if (!user) redirect('/');
 
-  const { data: profile } = await supabase
+  const { data: profileWithPoints, error: profileError } = await supabase
     .from('profiles')
-    .select('nickname, total_recommends')
+    .select('nickname, total_recommends, points')
     .eq('id', user.id)
     .single();
+  const { data: profileFallback } = profileError
+    ? await supabase
+      .from('profiles')
+      .select('nickname, total_recommends')
+      .eq('id', user.id)
+      .single()
+    : { data: null };
+  const profile = profileWithPoints ?? profileFallback;
 
   const { data: reviews } = await supabase
     .from('reviews')
@@ -34,7 +43,10 @@ export default async function ProfilePage() {
 
   const nickname = profile?.nickname ?? '유저';
   const totalRecommends = profile?.total_recommends ?? 0;
+  const rawPoints = profile && 'points' in profile ? profile.points : null;
+  const points = Number(rawPoints ?? totalRecommends);
   const rank = getRank(totalRecommends);
+  const pointLevel = getPointLevel(points);
 
   return (
     <div className="flex flex-col min-h-screen max-w-2xl mx-auto w-full">
@@ -60,6 +72,54 @@ export default async function ProfilePage() {
               )}
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold">내 포인트</h2>
+            <p className={`mt-1 text-lg font-black ${pointLevel.color}`}>{pointLevel.label}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-black tabular-nums">{points.toLocaleString()}</p>
+            <p className="text-xs text-gray-400">포인트</p>
+          </div>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-900">
+          <div className="h-full rounded-full bg-amber-400" style={{ width: `${pointLevel.progress}%` }} />
+        </div>
+        <p className="mt-2 text-xs text-gray-400">
+          {pointLevel.remaining === null
+            ? '최고 등급입니다'
+            : `${pointLevel.nextLabel}까지 ${pointLevel.remaining.toLocaleString()}점 남음`}
+        </p>
+      </section>
+
+      <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+        <h2 className="text-sm font-bold mb-3">포인트 제도</h2>
+        <div className="divide-y divide-gray-100 rounded-md border border-gray-100 dark:divide-gray-900 dark:border-gray-900">
+          {POINT_RULES.map((rule) => (
+            <div key={rule.label} className="grid grid-cols-[1fr_auto] gap-3 px-3 py-3">
+              <div className="min-w-0">
+                <p className="text-sm font-bold">{rule.label}</p>
+                <p className="mt-0.5 text-xs text-gray-400">{rule.description}</p>
+              </div>
+              <span className="text-sm font-black tabular-nums text-amber-500">+{rule.points}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+        <h2 className="text-sm font-bold mb-3">토끼 등급</h2>
+        <div className="grid gap-2">
+          {POINT_LEVELS.map((level) => (
+            <div key={level.label} className="flex items-center justify-between rounded-md border border-gray-100 px-3 py-2 dark:border-gray-900">
+              <span className={`text-sm font-bold ${level.color}`}>{level.label}</span>
+              <span className="text-xs font-semibold text-gray-400">{level.min.toLocaleString()}점부터</span>
+            </div>
+          ))}
         </div>
       </section>
 
