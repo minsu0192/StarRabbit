@@ -222,6 +222,8 @@ function sortWebtoons(items: WebtoonWithStats[], sort: SortOption) {
   });
 }
 
+type ReviewStat = { score: number; created_at?: string; comment?: string | null };
+
 export async function getWebtoons(
   sort: SortOption = 'featured',
   platform?: string,
@@ -238,11 +240,25 @@ export async function getWebtoons(
   const from = (safePage - 1) * safeLimit;
   const to = from + safeLimit - 1;
 
+  // Reviews 를 별도 쿼리로 가져와서 nested 쿼리 의존성 제거
+  const reviewsPromise = supabase
+    .from('reviews')
+    .select('webtoon_id, score, created_at, comment')
+    .then(({ data }) => {
+      const map = new Map<string, ReviewStat[]>();
+      for (const r of data ?? []) {
+        const list = map.get(r.webtoon_id) ?? [];
+        list.push({ score: Number(r.score), created_at: r.created_at ?? undefined, comment: r.comment });
+        map.set(r.webtoon_id, list);
+      }
+      return map;
+    });
+
   let query = supabase
     .from('webtoons')
     .select(platform && VALID_PLATFORMS.includes(platform)
-      ? `*, reviews(score, created_at, comment), webtoon_sources!inner(*)`
-      : `*, reviews(score, created_at, comment), webtoon_sources(*)`, { count: 'exact' });
+      ? `*, webtoon_sources!inner(*)`
+      : `*, webtoon_sources(*)`, { count: 'exact' });
 
   if (platform && VALID_PLATFORMS.includes(platform)) {
     query = query.eq('webtoon_sources.platform', platform);
@@ -261,7 +277,8 @@ export async function getWebtoons(
   const needsClientSort = (VALID_SORTS as string[]).includes(sort) && sort !== 'latest';
   query = needsClientSort ? query.range(0, LIST_CANDIDATE_LIMIT - 1) : query.range(from, to);
 
-  let { data, error } = await query;
+  const [webtoonResult, reviewMap] = await Promise.all([query, reviewsPromise]);
+  let { data, error } = webtoonResult;
   let total = 0;
 
   if (!error) {
@@ -288,7 +305,7 @@ export async function getWebtoons(
   }
 
   if (error?.message?.includes('webtoon_sources')) {
-    let fallbackQuery = supabase.from('webtoons').select(`*, reviews(score, created_at, comment)`);
+    let fallbackQuery = supabase.from('webtoons').select('*');
     if (status && VALID_STATUSES.includes(status)) {
       fallbackQuery = fallbackQuery.eq('status', status);
     }
@@ -317,7 +334,8 @@ export async function getWebtoons(
 
   if (error || !data) return { items: [], total: 0, page: safePage, limit: safeLimit };
 
-  let webtoons = data.map((w) => withStats(w));
+  // 별도로 가져온 reviews 를 각 webtoon 에 주입
+  let webtoons = data.map((w) => withStats({ ...w, reviews: reviewMap.get(w.id) ?? [] }));
 
   if (platform && VALID_PLATFORMS.includes(platform)) {
     webtoons = webtoons.filter((webtoon) => webtoon.sources.some((source) => source.platform === platform));
@@ -336,25 +354,29 @@ export async function getWebtoons(
 export async function getWebtoon(id: string): Promise<WebtoonWithStats | null> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from('webtoons')
-    .select(`*, reviews(score, created_at, comment), webtoon_sources(*)`)
-    .eq('id', id)
-    .single();
+  const [webtoonResult, reviewsResult] = await Promise.all([
+    supabase.from('webtoons').select(`*, webtoon_sources(*)`).eq('id', id).single(),
+    supabase.from('reviews').select('webtoon_id, score, created_at, comment').eq('webtoon_id', id),
+  ]);
+
+  let { data, error } = webtoonResult;
 
   if (error?.message?.includes('webtoon_sources')) {
-    const fallback = await supabase
-      .from('webtoons')
-      .select(`*, reviews(score, created_at, comment)`)
-      .eq('id', id)
-      .single();
+    const fallback = await supabase.from('webtoons').select('*').eq('id', id).single();
     if (fallback.error || !fallback.data) return null;
-    return withStats(fallback.data);
+    data = fallback.data;
+    error = fallback.error;
   }
 
   if (error || !data) return null;
 
-  return withStats(data);
+  const reviews = (reviewsResult.data ?? []).map((r) => ({
+    score: Number(r.score),
+    created_at: r.created_at ?? undefined,
+    comment: r.comment,
+  }));
+
+  return withStats({ ...data, reviews });
 }
 
 export async function getReviewsByWebtoon(webtoonId: string): Promise<ReviewWithProfile[]> {
@@ -403,26 +425,28 @@ export async function searchWebtoons(query: string): Promise<WebtoonWithStats[]>
 
   const { data, error } = await supabase
     .from('webtoons')
-    .select(`*, reviews(score, created_at, comment), webtoon_sources(*)`)
+    .select(`*, webtoon_sources(*)`)
     .or(`title.ilike.%${safeQuery}%,author.ilike.%${safeQuery}%`)
     .order('title', { ascending: true })
     .limit(SEARCH_LIMIT);
 
+  let rows = data ?? [];
+
   if (error?.message?.includes('webtoon_sources')) {
     const fallback = await supabase
       .from('webtoons')
-      .select(`*, reviews(score, created_at, comment)`)
+      .select('*')
       .or(`title.ilike.%${safeQuery}%,author.ilike.%${safeQuery}%`)
       .order('title', { ascending: true })
       .limit(SEARCH_LIMIT);
     if (fallback.error || !fallback.data) return [];
-    return fallback.data.map((w) => withStats(w));
+    rows = fallback.data;
+  } else if (error) {
+    return [];
   }
 
-  if (error || !data) return [];
-
-  const byId = new Map<string, WebtoonWithStats>();
-  for (const row of data.map((w) => withStats(w))) byId.set(row.id, row);
+  const byId = new Map<string, (typeof rows)[number]>();
+  for (const row of rows) byId.set(row.id, row);
 
   const { data: sourceMatches } = await supabase
     .from('webtoon_sources')
@@ -437,17 +461,28 @@ export async function searchWebtoons(query: string): Promise<WebtoonWithStats[]>
   if (missingIds.length > 0) {
     const { data: sourceWebtoons } = await supabase
       .from('webtoons')
-      .select(`*, reviews(score, created_at, comment), webtoon_sources(*)`)
+      .select(`*, webtoon_sources(*)`)
       .in('id', missingIds)
       .limit(SEARCH_LIMIT);
 
-    for (const row of sourceWebtoons ?? []) {
-      const webtoon = withStats(row);
-      byId.set(webtoon.id, webtoon);
-    }
+    for (const row of sourceWebtoons ?? []) byId.set(row.id, row);
+  }
+
+  const allIds = [...byId.keys()];
+  const { data: reviewData } = await supabase
+    .from('reviews')
+    .select('webtoon_id, score, created_at, comment')
+    .in('webtoon_id', allIds);
+
+  const reviewMap = new Map<string, ReviewStat[]>();
+  for (const r of reviewData ?? []) {
+    const list = reviewMap.get(r.webtoon_id) ?? [];
+    list.push({ score: Number(r.score), created_at: r.created_at ?? undefined, comment: r.comment });
+    reviewMap.set(r.webtoon_id, list);
   }
 
   return [...byId.values()]
+    .map((w) => withStats({ ...w, reviews: reviewMap.get(w.id) ?? [] }))
     .sort((a, b) => a.title.localeCompare(b.title, 'ko'))
     .slice(0, SEARCH_LIMIT);
 }

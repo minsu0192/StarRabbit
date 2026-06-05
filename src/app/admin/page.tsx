@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient, hasServiceRoleConfig } from '@/lib/supabase/service';
 import WebtoonSearchPicker from '@/components/WebtoonSearchPicker';
 import ScoreBadge from '@/components/ScoreBadge';
+import AdminBannerSection from '@/components/AdminBannerSection';
 import {
   createCheerEvent,
   deleteReviewAsAdmin,
@@ -265,16 +266,13 @@ export default async function AdminPage({ searchParams }: AdminProps) {
 
         <section className="rounded-md border border-gray-100 p-3 dark:border-gray-900">
           <h2 className="mb-1 text-sm font-bold">배너 광고</h2>
-          <p className="mb-1 text-xs text-gray-400">홈 상단에 광고 배너를 표시합니다. 이미지 URL이 비어있으면 배너가 숨겨집니다.</p>
-          <p className="mb-3 text-xs text-amber-600 dark:text-amber-400 font-semibold">권장 이미지 크기: 가로 750px × 세로 150px (5:1 비율, 최대 80px 높이로 표시)</p>
-          <form action={updateBannerAd} className="space-y-2">
-            <input name="imageUrl" defaultValue={bannerImageUrl} placeholder="이미지 URL (예: https://cdn.example.com/banner.png)" className="w-full rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-gray-800" />
-            <input name="linkUrl" defaultValue={bannerLinkUrl} placeholder="클릭 시 이동 URL" className="w-full rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-gray-800" />
-            <input name="altText" defaultValue={bannerAltText} placeholder="광고 대체 텍스트 (예: 네이버웹툰 신작 게임 광고)" className="w-full rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-gray-800" />
-            <button className="rounded-md bg-gray-950 px-3 py-2 text-xs font-bold text-white dark:bg-white dark:text-gray-950">
-              배너 저장
-            </button>
-          </form>
+          <p className="mb-3 text-xs text-gray-400">홈 상단에 광고 배너를 표시합니다. URL이 비어있으면 배너가 숨겨집니다.</p>
+          <AdminBannerSection
+            updateBannerAd={updateBannerAd}
+            bannerImageUrl={bannerImageUrl}
+            bannerLinkUrl={bannerLinkUrl}
+            bannerAltText={bannerAltText}
+          />
         </section>
 
         <div className="divide-y divide-gray-100 rounded-md border border-gray-100 dark:divide-gray-900 dark:border-gray-900">
