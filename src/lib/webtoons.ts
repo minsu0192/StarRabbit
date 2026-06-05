@@ -34,6 +34,10 @@ type ReviewRowData = Omit<ReviewWithProfile, 'score'> & { score: number | string
 
 function withStats(webtoon: WebtoonRowData): WebtoonWithStats {
   const scores = (webtoon.reviews ?? []).map((r) => Number(r.score));
+  const low_score_count = scores.filter((score) => score >= 1 && score <= 4).length;
+  const high_score_count = scores.filter((score) => score >= 8 && score <= 10).length;
+  const one_score_count = scores.filter((score) => score === 1).length;
+  const ten_score_count = scores.filter((score) => score === 10).length;
   const weekStart = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const weeklyScores = (webtoon.reviews ?? [])
     .filter((r) => r.created_at && new Date(r.created_at).getTime() >= weekStart)
@@ -70,6 +74,10 @@ function withStats(webtoon: WebtoonRowData): WebtoonWithStats {
     weekly_avg_score,
     weekly_review_count: weeklyScores.length,
     weekly_comment_count,
+    low_score_count,
+    high_score_count,
+    one_score_count,
+    ten_score_count,
     sources: webtoonSources?.length ? webtoonSources : [fallbackSource],
   };
 }

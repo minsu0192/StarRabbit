@@ -31,6 +31,10 @@ export interface WebtoonWithStats extends Webtoon {
   weekly_avg_score: number | null;
   weekly_review_count: number;
   weekly_comment_count: number;
+  low_score_count: number;
+  high_score_count: number;
+  one_score_count: number;
+  ten_score_count: number;
   sources: WebtoonSource[];
 }
 

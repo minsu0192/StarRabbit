@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import BunnyMascot from './BunnyMascot';
 import LoginButton from './LoginButton';
 
+const ADMIN_EMAILS = new Set(['minsu0192@gmail.com']);
+
 export default async function Header() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -21,27 +23,38 @@ export default async function Header() {
   const userInfo = user
     ? { name: nickname, avatarUrl: user.user_metadata?.avatar_url ?? null }
     : null;
+  const isAdmin = user?.email ? ADMIN_EMAILS.has(user.email.toLowerCase()) : false;
 
   return (
     <header className="sticky top-0 z-10 border-b border-gray-100 bg-[var(--background)]/90 px-4 py-3 backdrop-blur dark:border-gray-900">
       <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
-      <Link href="/" className="flex min-w-0 items-center gap-2">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-50 ring-1 ring-amber-100 dark:bg-amber-950/40 dark:ring-amber-900">
-          <BunnyMascot size={26} />
-        </span>
-        <span className="truncate text-base font-black tracking-tight">별토끼</span>
-      </Link>
-      <div className="flex shrink-0 items-center gap-2">
-        {user && (
-          <Link href="/profile" className="hidden text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:hover:text-gray-100 min-[390px]:block">
-            프로필
-          </Link>
-        )}
-        <Link href="/cheer" className="hidden text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:hover:text-gray-100 min-[390px]:block">
-          응원
+        <Link href="/" className="flex min-w-0 items-center gap-2">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-50 ring-1 ring-amber-100 dark:bg-amber-950/40 dark:ring-amber-900">
+            <BunnyMascot size={26} />
+          </span>
+          <span className="truncate text-base font-black tracking-tight">별토끼</span>
         </Link>
-        <LoginButton user={userInfo} compact />
-      </div>
+        <div className="flex min-w-0 shrink-0 items-center gap-2">
+          {user && (
+            <span className="hidden max-w-32 truncate text-xs font-semibold text-gray-500 min-[460px]:block">
+              {nickname}님 반가워요
+            </span>
+          )}
+          {isAdmin && (
+            <Link href="/admin" className="hidden text-xs font-semibold text-amber-600 transition-colors hover:text-amber-700 min-[390px]:block">
+              관리자
+            </Link>
+          )}
+          {user && (
+            <Link href="/profile" className="hidden text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:hover:text-gray-100 min-[390px]:block">
+              프로필
+            </Link>
+          )}
+          <Link href="/cheer" className="hidden text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:hover:text-gray-100 min-[390px]:block">
+            응원
+          </Link>
+          <LoginButton user={userInfo} compact />
+        </div>
       </div>
     </header>
   );

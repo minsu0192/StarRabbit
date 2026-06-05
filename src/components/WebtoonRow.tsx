@@ -8,11 +8,29 @@ interface Props {
   rank: number;
 }
 
+function getScoreSignal(webtoon: WebtoonWithStats) {
+  if (webtoon.review_count < 8) return null;
+
+  const lowRatio = webtoon.low_score_count / webtoon.review_count;
+  const highRatio = webtoon.high_score_count / webtoon.review_count;
+  const oneRatio = webtoon.one_score_count / webtoon.review_count;
+  const tenRatio = webtoon.ten_score_count / webtoon.review_count;
+
+  if (lowRatio >= 0.25 && highRatio >= 0.25) {
+    return { label: '극과 극', className: 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-950 dark:text-fuchsia-300' };
+  }
+  if (oneRatio >= 0.35 || lowRatio >= 0.55) {
+    return { label: '테러 의심', className: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' };
+  }
+  if (tenRatio >= 0.45 || highRatio >= 0.75) {
+    return { label: '몰표 감지', className: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300' };
+  }
+
+  return null;
+}
+
 export default function WebtoonRow({ webtoon, rank }: Props) {
-  const isPolarized =
-    webtoon.review_count >= 10 &&
-    webtoon.avg_score !== null &&
-    (webtoon.avg_score <= 4.0 || webtoon.avg_score >= 8.5);
+  const scoreSignal = getScoreSignal(webtoon);
 
   const rankColor =
     rank === 1 ? 'text-amber-500 font-black' :
@@ -36,9 +54,9 @@ export default function WebtoonRow({ webtoon, rank }: Props) {
         <div className="flex-1 min-w-0 space-y-0.5">
           <div className="flex items-center gap-1.5">
             <span className="truncate text-[15px] font-bold leading-snug">{webtoon.title}</span>
-            {isPolarized && (
-              <span className="shrink-0 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-orange-700 dark:bg-orange-950 dark:text-orange-300">
-                호불호
+            {scoreSignal && (
+              <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${scoreSignal.className}`}>
+                {scoreSignal.label}
               </span>
             )}
           </div>
