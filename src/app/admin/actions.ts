@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { createServiceClient } from '@/lib/supabase/service';
+import { createServiceClient, hasServiceRoleConfig } from '@/lib/supabase/service';
 import { isAdminEmail } from '@/lib/admin';
 
 async function requireAdmin() {
@@ -17,9 +17,16 @@ function nonEmpty(value: FormDataEntryValue | null) {
   return String(value ?? '').trim();
 }
 
+function requireServiceRole() {
+  if (!hasServiceRoleConfig()) {
+    throw new Error('배포 환경에 SUPABASE_SERVICE_ROLE_KEY가 설정되어 있지 않습니다');
+  }
+  return createServiceClient();
+}
+
 export async function updateTopNotice(formData: FormData) {
   const user = await requireAdmin();
-  const service = createServiceClient();
+  const service = requireServiceRole();
   const notice = nonEmpty(formData.get('notice')).slice(0, 120);
 
   const { error } = await service
@@ -38,7 +45,7 @@ export async function updateTopNotice(formData: FormData) {
 
 export async function deleteReviewAsAdmin(formData: FormData) {
   await requireAdmin();
-  const service = createServiceClient();
+  const service = requireServiceRole();
   const reviewId = nonEmpty(formData.get('reviewId'));
   if (!reviewId) throw new Error('삭제할 게시물이 없습니다');
 
@@ -53,7 +60,7 @@ export async function deleteReviewAsAdmin(formData: FormData) {
 
 export async function suspendUserAsAdmin(formData: FormData) {
   await requireAdmin();
-  const service = createServiceClient();
+  const service = requireServiceRole();
   const userId = nonEmpty(formData.get('userId'));
   const reason = nonEmpty(formData.get('reason')) || '운영 정책 위반';
   if (!userId) throw new Error('정지할 유저가 없습니다');
@@ -74,7 +81,7 @@ export async function suspendUserAsAdmin(formData: FormData) {
 
 export async function createCheerEvent(formData: FormData) {
   await requireAdmin();
-  const service = createServiceClient();
+  const service = requireServiceRole();
   const title = nonEmpty(formData.get('title'));
   const startsAt = nonEmpty(formData.get('startsAt'));
   const endsAt = nonEmpty(formData.get('endsAt'));

@@ -29,8 +29,15 @@ function getScoreSignal(webtoon: WebtoonWithStats) {
   return null;
 }
 
+function originLabel(origin: WebtoonWithStats['origin']) {
+  if (origin === 'japan') return '일본';
+  if (origin === 'china') return '중국';
+  return null;
+}
+
 export default function WebtoonRow({ webtoon, rank }: Props) {
   const scoreSignal = getScoreSignal(webtoon);
+  const translatedOrigin = originLabel(webtoon.origin);
 
   const rankColor =
     rank === 1 ? 'text-amber-500 font-black' :
@@ -64,6 +71,11 @@ export default function WebtoonRow({ webtoon, rank }: Props) {
             <span className="truncate text-xs text-gray-500 dark:text-gray-400">{webtoon.author}</span>
             <span className="text-gray-300 dark:text-gray-700">·</span>
             <PlatformBadges platforms={webtoon.sources.map((source) => source.platform)} />
+            {translatedOrigin && (
+              <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500 dark:bg-gray-900 dark:text-gray-400">
+                {translatedOrigin}
+              </span>
+            )}
             {webtoon.genre && (
               <span className="truncate text-xs text-gray-400 dark:text-gray-500">{webtoon.genre}</span>
             )}

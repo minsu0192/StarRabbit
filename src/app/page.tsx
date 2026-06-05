@@ -12,11 +12,11 @@ import Header from '@/components/Header';
 import { createClient } from '@/lib/supabase/server';
 
 interface Props {
-  searchParams: Promise<{ sort?: string; platform?: string; status?: string; page?: string; size?: string; initial?: string; genre?: string; audience?: string }>;
+  searchParams: Promise<{ sort?: string; platform?: string; status?: string; page?: string; size?: string; initial?: string; genre?: string; audience?: string; origin?: string }>;
 }
 
 export default async function Home({ searchParams }: Props) {
-  const { sort, platform, status, page, size, initial, genre, audience } = await searchParams;
+  const { sort, platform, status, page, size, initial, genre, audience, origin } = await searchParams;
   const supabase = await createClient();
   const sortOption = (['featured', 'score', 'popular', 'weekly_score', 'weekly_comments', 'latest'].includes(sort ?? '') ? sort : 'featured') as SortOption;
   const currentPage = Math.max(Number(page ?? '1') || 1, 1);
@@ -27,9 +27,9 @@ export default async function Home({ searchParams }: Props) {
     { items: weeklyCommentWebtoons },
     noticeResult,
   ] = await Promise.all([
-    getWebtoons(sortOption, platform, status, currentPage, pageSize, initial, genre, audience),
-    getWebtoons('weekly_score', platform, status, 1, 10, initial, genre, audience),
-    getWebtoons('weekly_comments', platform, status, 1, 10, initial, genre, audience),
+    getWebtoons(sortOption, platform, status, currentPage, pageSize, initial, genre, audience, origin),
+    getWebtoons('weekly_score', platform, status, 1, 20, initial, genre, audience, origin),
+    getWebtoons('weekly_comments', platform, status, 1, 20, initial, genre, audience, origin),
     supabase.from('site_settings').select('value').eq('key', 'top_notice').maybeSingle(),
   ]);
   const topNotice = noticeResult.error ? null : noticeResult.data?.value?.trim();
@@ -43,6 +43,9 @@ export default async function Home({ searchParams }: Props) {
     platform === 'etc' ? '기타' :
     null;
   const statusLabel = status === 'ongoing' ? '연재중' : status === 'completed' ? '완결' : null;
+  const originLabel = origin === 'korea' ? '한국' : origin === 'japan' ? '일본' : origin === 'china' ? '중국' : null;
+  const weeklyScoreItems = weeklyScoreWebtoons.filter((webtoon) => webtoon.weekly_review_count > 0).slice(0, 3);
+  const weeklyCommentItems = weeklyCommentWebtoons.filter((webtoon) => webtoon.weekly_comment_count > 0).slice(0, 3);
   const pageHref = (nextPage: number) => {
     const params = new URLSearchParams();
     if (sort && sort !== 'featured') params.set('sort', sort);
@@ -51,6 +54,7 @@ export default async function Home({ searchParams }: Props) {
     if (initial) params.set('initial', initial);
     if (genre) params.set('genre', genre);
     if (audience) params.set('audience', audience);
+    if (origin) params.set('origin', origin);
     if (limit !== 20) params.set('size', String(limit));
     if (nextPage > 1) params.set('page', String(nextPage));
     const query = params.toString();
@@ -96,13 +100,13 @@ export default async function Home({ searchParams }: Props) {
         </Link>
       </nav>
 
-      {(weeklyScoreWebtoons.length > 0 || weeklyCommentWebtoons.length > 0) && (
+      {(weeklyScoreItems.length > 0 || weeklyCommentItems.length > 0) && (
         <section className="mb-3 space-y-3 px-4">
-          {weeklyScoreWebtoons.length > 0 && (
-            <WeeklyStrip title="금주 평점" items={weeklyScoreWebtoons} />
+          {weeklyScoreItems.length > 0 && (
+            <WeeklyStrip title="금주 평점" items={weeklyScoreItems} />
           )}
-          {weeklyCommentWebtoons.length > 0 && (
-            <WeeklyStrip title="금주 댓글" items={weeklyCommentWebtoons} />
+          {weeklyCommentItems.length > 0 && (
+            <WeeklyStrip title="금주 댓글" items={weeklyCommentItems} />
           )}
         </section>
       )}
@@ -116,7 +120,7 @@ export default async function Home({ searchParams }: Props) {
       <div className="px-4 pb-2">
         <div className="flex items-center justify-between border-y border-gray-100 py-2 dark:border-gray-900">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {[platformLabel, genre, initial, statusLabel, audience === 'all' ? 'BL·GL 포함' : null].filter(Boolean).join(' · ') || '전체 웹툰'}
+            {[platformLabel, originLabel, genre, initial, statusLabel, audience === 'all' ? 'BL·GL 포함' : null].filter(Boolean).join(' · ') || '전체 웹툰'}
           </p>
           <p className="text-xs font-bold text-gray-800 dark:text-gray-100">
             {total.toLocaleString()}개 중 {webtoons.length.toLocaleString()}개
@@ -178,17 +182,20 @@ export default async function Home({ searchParams }: Props) {
 
 function WeeklyStrip({ title, items }: { title: string; items: Awaited<ReturnType<typeof getWebtoons>>['items'] }) {
   return (
-    <div className="rounded-md border border-gray-100 bg-white py-3 dark:border-gray-900 dark:bg-gray-950">
-      <div className="mb-2 flex items-center justify-between px-3">
+    <div className="rounded-md border border-gray-100 bg-white p-3 dark:border-gray-900 dark:bg-gray-950">
+      <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-black">{title}</h2>
-        <span className="text-[11px] font-semibold text-gray-400">TOP 10</span>
+        <span className="text-[11px] font-semibold text-gray-400">TOP 3</span>
       </div>
-      <div className="flex gap-2 overflow-x-auto px-3">
+      <div className="grid gap-2">
         {items.map((webtoon, index) => (
-          <Link key={`${title}-${webtoon.id}`} href={`/webtoon/${webtoon.id}`} className="w-36 shrink-0 rounded-md border border-gray-100 px-3 py-2 dark:border-gray-900">
-            <div className="mb-1 text-[11px] font-black text-amber-500">{index + 1}</div>
-            <div className="truncate text-sm font-bold">{webtoon.title}</div>
-            <div className="mt-1 text-[11px] text-gray-400">
+          <Link key={`${title}-${webtoon.id}`} href={`/webtoon/${webtoon.id}`} className="grid grid-cols-[24px_1fr_auto] items-center gap-2 rounded-md border border-gray-100 px-3 py-3 dark:border-gray-900">
+            <div className="text-sm font-black text-amber-500">{index + 1}</div>
+            <div className="min-w-0">
+              <div className="truncate text-base font-black">{webtoon.title}</div>
+              <div className="truncate text-xs text-gray-400">{webtoon.author}</div>
+            </div>
+            <div className="text-right text-sm font-black tabular-nums text-gray-700 dark:text-gray-200">
               {title === '금주 댓글'
                 ? `${webtoon.weekly_comment_count.toLocaleString()}개`
                 : webtoon.weekly_avg_score !== null ? webtoon.weekly_avg_score.toFixed(1) : '-'}

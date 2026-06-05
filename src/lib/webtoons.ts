@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server';
-import { Webtoon, WebtoonSource, WebtoonWithStats, SortOption, ReviewWithProfile } from '@/types';
+import { Webtoon, WebtoonSource, WebtoonWithStats, SortOption, ReviewWithProfile, Origin } from '@/types';
 
 const VALID_PLATFORMS = ['naver', 'kakao', 'ridi', 'etc'];
 const VALID_STATUSES = ['ongoing', 'completed'];
 const VALID_AUDIENCES = ['general', 'all'];
+const VALID_ORIGINS = ['korea', 'japan', 'china', 'unknown'];
 const VALID_GENRES = ['로맨스', '드라마', '판타지', '액션', '무협', '학원', '일상', '개그', '스릴러', '공포', '스포츠'];
 const DEFAULT_LIST_LIMIT = 20;
 const VALID_LIST_LIMITS = [10, 20, 50, 100];
@@ -66,6 +67,7 @@ function withStats(webtoon: WebtoonRowData): WebtoonWithStats {
     last_seen_at: webtoon.created_at,
     source_checked_at: null,
   };
+  const sources = webtoonSources?.length ? webtoonSources : [fallbackSource];
 
   return {
     ...rest,
@@ -78,7 +80,8 @@ function withStats(webtoon: WebtoonRowData): WebtoonWithStats {
     high_score_count,
     one_score_count,
     ten_score_count,
-    sources: webtoonSources?.length ? webtoonSources : [fallbackSource],
+    origin: inferOrigin({ ...webtoon, sources }),
+    sources,
   };
 }
 
@@ -107,6 +110,22 @@ function isBlGlWebtoon(webtoon: WebtoonWithStats) {
     ...webtoon.sources.flatMap((source) => [source.title, source.genre]),
   ].filter(Boolean).join(' ').toLowerCase();
   return /(^|[^a-z])(?:bl|gl)([^a-z]|$)|비엘|백합/.test(value);
+}
+
+function inferOrigin(webtoon: Webtoon & { sources: WebtoonSource[] }): Origin {
+  const platforms = new Set(webtoon.sources.map((source) => source.platform));
+  const value = [
+    webtoon.title,
+    webtoon.author,
+    webtoon.genre,
+    ...webtoon.sources.flatMap((source) => [source.title, source.author, source.genre]),
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  if (platforms.has('naver')) return 'korea';
+  if (/중국|중화|대륙|무협만화|텐센트|콰이칸|kuaikan|bilibili|빌리빌리/.test(value)) return 'china';
+  if (/일본|일본판|코믹스|망가|만화판|슈에이샤|카도카와|고단샤|소학관|shueisha|kadokawa|kodansha|shogakukan|라르고|인디고|볼레로|페어리|from red|ihertz/.test(value)) return 'japan';
+  if (webtoon.platform === 'kakao' || webtoon.platform === 'ridi') return 'korea';
+  return 'unknown';
 }
 
 function sourceWeight(webtoon: WebtoonWithStats) {
@@ -155,6 +174,7 @@ export async function getWebtoons(
   initial?: string,
   genre?: string,
   audience: string = 'general',
+  origin?: string,
 ): Promise<{ items: WebtoonWithStats[]; total: number; page: number; limit: number }> {
   const supabase = await createClient();
   const safeLimit = normalizeListLimit(limit);
@@ -251,11 +271,14 @@ export async function getWebtoons(
   if (shouldHideBlGl) {
     webtoons = webtoons.filter((webtoon) => !isBlGlWebtoon(webtoon));
   }
+  if (origin && VALID_ORIGINS.includes(origin)) {
+    webtoons = webtoons.filter((webtoon) => webtoon.origin === origin);
+  }
 
   const sorted = sortWebtoons(webtoons, sort);
   const pageItems = needsClientSort ? sorted.slice(from, to + 1) : sorted;
 
-  return { items: pageItems, total, page: safePage, limit: safeLimit };
+  return { items: pageItems, total: origin ? sorted.length : total, page: safePage, limit: safeLimit };
 }
 
 export async function getWebtoon(id: string): Promise<WebtoonWithStats | null> {

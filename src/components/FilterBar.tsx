@@ -43,6 +43,13 @@ const AUDIENCES = [
   { value: 'all', label: 'BL·GL 포함' },
 ];
 
+const ORIGINS = [
+  { value: '', label: '전체' },
+  { value: 'korea', label: '한국' },
+  { value: 'japan', label: '일본' },
+  { value: 'china', label: '중국' },
+];
+
 const INITIALS = [
   { value: '', label: '전체' },
   ...'ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ'.split('').map((label) => ({ value: label, label })),
@@ -81,6 +88,7 @@ export default function FilterBar() {
   const size = sp.get('size') ?? '20';
   const genre = sp.get('genre') ?? '';
   const audience = sp.get('audience') ?? '';
+  const origin = sp.get('origin') ?? '';
 
   const update = (key: string, value: string) => {
     const params = new URLSearchParams(sp.toString());
@@ -139,6 +147,13 @@ export default function FilterBar() {
         <ControlGroup label="취향">
           {AUDIENCES.map(({ value, label }) => (
             <button key={`a-${value}`} onClick={() => update('audience', value)} className={chip(audience === value)}>
+              {label}
+            </button>
+          ))}
+        </ControlGroup>
+        <ControlGroup label="국가">
+          {ORIGINS.map(({ value, label }) => (
+            <button key={`o-${value}`} onClick={() => update('origin', value)} className={chip(origin === value)}>
               {label}
             </button>
           ))}

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import Header from '@/components/Header';
 import { isAdminEmail } from '@/lib/admin';
 import { createClient } from '@/lib/supabase/server';
-import { createServiceClient } from '@/lib/supabase/service';
+import { createServiceClient, hasServiceRoleConfig } from '@/lib/supabase/service';
 import {
   createCheerEvent,
   deleteReviewAsAdmin,
@@ -51,33 +51,51 @@ export default async function AdminPage() {
 
   if (!isAdminEmail(email)) redirect('/');
 
-  const service = createServiceClient();
-  const reviewsResult = await service
-    .from('reviews')
-    .select('id, user_id, score, comment, created_at, profiles(nickname), webtoons(title)')
-    .order('created_at', { ascending: false })
-    .limit(12);
-  const profilesResult = await service
-    .from('profiles')
-    .select('id, nickname, is_suspended, suspension_reason, suspended_at, total_recommends')
-    .order('created_at', { ascending: false })
-    .limit(12);
-  let profiles: AdminProfileRow[] = profilesResult.data ?? [];
-  if (profilesResult.error) {
-    const fallbackProfilesResult = await service
-      .from('profiles')
-      .select('id, nickname, total_recommends')
-      .order('created_at', { ascending: false })
-      .limit(12);
-    profiles = fallbackProfilesResult.data ?? [];
+  let reviews: {
+    id: string;
+    comment: string | null;
+    profiles: { nickname?: string } | null;
+    webtoons: { title?: string } | null;
+  }[] = [];
+  let profiles: AdminProfileRow[] = [];
+  let notice: { value?: string } | null = null;
+  const serviceConfigured = hasServiceRoleConfig();
+
+  if (serviceConfigured) {
+    try {
+      const service = createServiceClient();
+      const reviewsResult = await service
+        .from('reviews')
+        .select('id, user_id, score, comment, created_at, profiles(nickname), webtoons(title)')
+        .order('created_at', { ascending: false })
+        .limit(12);
+      const profilesResult = await service
+        .from('profiles')
+        .select('id, nickname, is_suspended, suspension_reason, suspended_at, total_recommends')
+        .order('created_at', { ascending: false })
+        .limit(12);
+      profiles = profilesResult.data ?? [];
+      if (profilesResult.error) {
+        const fallbackProfilesResult = await service
+          .from('profiles')
+          .select('id, nickname, total_recommends')
+          .order('created_at', { ascending: false })
+          .limit(12);
+        profiles = fallbackProfilesResult.data ?? [];
+      }
+      const noticeResult = await service
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'top_notice')
+        .maybeSingle();
+      reviews = (reviewsResult.data ?? []) as typeof reviews;
+      notice = noticeResult.data ?? null;
+    } catch {
+      reviews = [];
+      profiles = [];
+      notice = null;
+    }
   }
-  const noticeResult = await service
-    .from('site_settings')
-    .select('value')
-    .eq('key', 'top_notice')
-    .maybeSingle();
-  const reviews = reviewsResult.data ?? [];
-  const notice = noticeResult.data ?? null;
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col">
@@ -92,6 +110,12 @@ export default async function AdminPage() {
       </section>
 
       <main className="flex-1 space-y-4 px-4 py-4">
+        {!serviceConfigured && (
+          <section className="rounded-md border border-red-100 bg-red-50 p-3 text-sm text-red-700 dark:border-red-950 dark:bg-red-950/30 dark:text-red-300">
+            배포 환경에 <code>SUPABASE_SERVICE_ROLE_KEY</code>가 없어 관리자 실행 기능이 비활성화되어 있습니다.
+          </section>
+        )}
+
         <section className="rounded-md border border-gray-100 p-3 dark:border-gray-900">
           <h2 className="mb-3 text-sm font-bold">상단 공지글</h2>
           <form action={updateTopNotice} className="space-y-2">
@@ -131,8 +155,8 @@ export default async function AdminPage() {
               <form key={review.id} action={deleteReviewAsAdmin} className="grid grid-cols-[1fr_auto] gap-3 py-2">
                 <input type="hidden" name="reviewId" value={review.id} />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold">{(review.webtoons as { title?: string } | null)?.title ?? '알 수 없음'}</p>
-                  <p className="truncate text-xs text-gray-400">{(review.profiles as { nickname?: string } | null)?.nickname ?? '익명'} · {review.comment || '별점만'}</p>
+                  <p className="truncate text-sm font-bold">{review.webtoons?.title ?? '알 수 없음'}</p>
+                  <p className="truncate text-xs text-gray-400">{review.profiles?.nickname ?? '익명'} · {review.comment || '별점만'}</p>
                 </div>
                 <button className="rounded-md border border-red-200 px-2 py-1 text-xs font-bold text-red-500">
                   삭제

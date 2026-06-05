@@ -1,5 +1,6 @@
 export type Platform = 'naver' | 'kakao' | 'ridi' | 'etc';
 export type Status = 'ongoing' | 'completed';
+export type Origin = 'korea' | 'japan' | 'china' | 'unknown';
 
 export interface Webtoon {
   id: string;
@@ -35,6 +36,7 @@ export interface WebtoonWithStats extends Webtoon {
   high_score_count: number;
   one_score_count: number;
   ten_score_count: number;
+  origin: Origin;
   sources: WebtoonSource[];
 }
 
