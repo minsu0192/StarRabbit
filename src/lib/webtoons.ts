@@ -159,11 +159,11 @@ function platformTier(webtoon: WebtoonWithStats): number {
   return 0;
 }
 
-function featuredScore(webtoon: WebtoonWithStats) {
-  // 리뷰 있는 작품 우선 — 리뷰수 많고 평점 높을수록 위
-  // 리뷰 없으면 플랫폼 순(네이버 > 카카오 > 리디 > 기타)으로 하단 정렬
-  if (webtoon.review_count > 0) {
-    return 2_000_000 + webtoon.review_count * 1000 + (webtoon.avg_score ?? 0) * 10 + platformTier(webtoon);
+function featuredScore(webtoon: WebtoonWithStats & { cached_review_count?: number }) {
+  // cached_review_count: DB에서 직접 온 숫자 (권한 문제 없음), 없으면 computed 값 사용
+  const rc = webtoon.cached_review_count ?? webtoon.review_count;
+  if (rc > 0) {
+    return 2_000_000 + rc * 1000 + (webtoon.avg_score ?? 0) * 10 + platformTier(webtoon);
   }
   return platformTier(webtoon) * 100_000;
 }
@@ -223,6 +223,12 @@ function sortWebtoons(items: WebtoonWithStats[], sort: SortOption) {
 }
 
 type ReviewStat = { score: number; created_at?: string; comment?: string | null };
+
+function mergeById<T extends { id: string }>(base: T[], extra: T[]) {
+  const byId = new Map(base.map((item) => [item.id, item]));
+  for (const item of extra) byId.set(item.id, item);
+  return [...byId.values()];
+}
 
 export async function getWebtoons(
   sort: SortOption = 'featured',
@@ -340,6 +346,43 @@ export async function getWebtoons(
   }
 
   if (error || !data) return { items: [], total: 0, page: safePage, limit: safeLimit };
+
+  const reviewedIds = [...reviewMap.keys()];
+  if (needsClientSort && reviewedIds.length > 0) {
+    let reviewedQuery = supabase
+      .from('webtoons')
+      .select(platform && VALID_PLATFORMS.includes(platform)
+        ? `*, webtoon_sources!inner(*)`
+        : `*, webtoon_sources(*)`)
+      .in('id', reviewedIds);
+
+    if (platform && VALID_PLATFORMS.includes(platform)) {
+      reviewedQuery = reviewedQuery.eq('webtoon_sources.platform', platform);
+    }
+    if (status && VALID_STATUSES.includes(status)) {
+      reviewedQuery = reviewedQuery.eq('status', status);
+    }
+    if (genre && VALID_GENRES.includes(genre)) {
+      reviewedQuery = reviewedQuery.eq('genre', genre);
+    }
+    reviewedQuery = applyInitialFilter(reviewedQuery, initial);
+
+    const reviewedResult = await reviewedQuery;
+    if (reviewedResult.data) {
+      data = mergeById(data, reviewedResult.data);
+    } else if (reviewedResult.error?.message?.includes('webtoon_sources')) {
+      let fallbackReviewed = supabase.from('webtoons').select('*').in('id', reviewedIds);
+      if (status && VALID_STATUSES.includes(status)) {
+        fallbackReviewed = fallbackReviewed.eq('status', status);
+      }
+      if (genre && VALID_GENRES.includes(genre)) {
+        fallbackReviewed = fallbackReviewed.eq('genre', genre);
+      }
+      fallbackReviewed = applyInitialFilter(fallbackReviewed, initial);
+      const fallbackReviewedResult = await fallbackReviewed;
+      if (fallbackReviewedResult.data) data = mergeById(data, fallbackReviewedResult.data);
+    }
+  }
 
   // 별도로 가져온 reviews 를 각 webtoon 에 주입
   let webtoons = data.map((w) => withStats({ ...w, reviews: reviewMap.get(w.id) ?? [] }));

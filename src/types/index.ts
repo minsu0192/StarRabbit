@@ -10,6 +10,7 @@ export interface Webtoon {
   genre: string | null;
   status: Status | null;
   created_at: string;
+  cached_review_count?: number;
 }
 
 export interface WebtoonSource {
