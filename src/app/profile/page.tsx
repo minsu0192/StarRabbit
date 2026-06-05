@@ -7,6 +7,7 @@ import SiteFooter from '@/components/SiteFooter';
 import NicknameForm from '@/components/NicknameForm';
 import ScoreBadge from '@/components/ScoreBadge';
 import BunnyMascot from '@/components/BunnyMascot';
+import TierBunny from '@/components/TierBunny';
 import { POINT_LEVELS, POINT_RULES, getPointLevel } from '@/lib/points';
 
 function getRank(total: number): { label: string; color: string; next: string; needed: number | null } {
@@ -56,8 +57,8 @@ export default async function ProfilePage() {
       {/* 프로필 헤더 */}
       <section className="px-4 py-6 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-amber-400 flex items-center justify-center text-2xl font-black text-white shrink-0">
-            {nickname.slice(0, 1)}
+          <div className="shrink-0">
+            <TierBunny tier={pointLevel.label} size={56} />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -116,9 +117,13 @@ export default async function ProfilePage() {
         <h2 className="text-sm font-bold mb-3">토끼 등급</h2>
         <div className="grid gap-2">
           {POINT_LEVELS.map((level) => (
-            <div key={level.label} className="flex items-center justify-between rounded-md border border-gray-100 px-3 py-2 dark:border-gray-900">
-              <span className={`text-sm font-bold ${level.color}`}>{level.label}</span>
-              <span className="text-xs font-semibold text-gray-400">{level.min.toLocaleString()}점부터</span>
+            <div key={level.label} className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${pointLevel.label === level.label ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30' : 'border-gray-100 dark:border-gray-900'}`}>
+              <TierBunny tier={level.label} size={32} />
+              <span className={`flex-1 text-sm font-bold ${level.color}`}>{level.label}</span>
+              {pointLevel.label === level.label && (
+                <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black text-white">현재</span>
+              )}
+              <span className="text-xs font-semibold text-gray-400">{level.min.toLocaleString()}점</span>
             </div>
           ))}
         </div>

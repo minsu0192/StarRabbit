@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import { isAdminEmail } from '@/lib/admin';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient, hasServiceRoleConfig } from '@/lib/supabase/service';
+import WebtoonSearchPicker from '@/components/WebtoonSearchPicker';
 import {
   createCheerEvent,
   deleteReviewAsAdmin,
@@ -159,7 +160,7 @@ export default async function AdminPage() {
               <input name="startsAt" type="datetime-local" className="rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-gray-800" />
               <input name="endsAt" type="datetime-local" className="rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-gray-800" />
             </div>
-            <textarea name="webtoonIds" rows={2} placeholder="붙일 작품 webtoon_id를 줄바꿈 또는 쉼표로 입력" className="rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-gray-800" />
+            <WebtoonSearchPicker name="webtoonIds" />
             <button className="rounded-md bg-gray-950 px-3 py-2 text-xs font-bold text-white dark:bg-white dark:text-gray-950">
               응원전 만들기
             </button>
