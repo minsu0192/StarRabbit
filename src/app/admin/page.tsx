@@ -67,7 +67,7 @@ export default async function AdminPage() {
   let bannerImageUrl = '';
   let bannerLinkUrl = '';
   let bannerAltText = '';
-  let reportedReviews: ReviewRow[] = [];
+  const reportedReviews: ReviewRow[] = [];
   const serviceConfigured = hasServiceRoleConfig();
 
   if (serviceConfigured) {

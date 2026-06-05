@@ -32,6 +32,10 @@ export interface WebtoonWithStats extends Webtoon {
   weekly_avg_score: number | null;
   weekly_review_count: number;
   weekly_comment_count: number;
+  monthly_avg_score: number | null;
+  monthly_review_count: number;
+  yearly_avg_score: number | null;
+  yearly_review_count: number;
   low_score_count: number;
   high_score_count: number;
   one_score_count: number;
@@ -59,7 +63,7 @@ export interface Review {
   profiles?: Profile;
 }
 
-export type SortOption = 'featured' | 'score' | 'popular' | 'weekly_score' | 'weekly_comments' | 'latest';
+export type SortOption = 'featured' | 'score' | 'popular' | 'weekly_score' | 'weekly_comments' | 'monthly_score' | 'monthly_popular' | 'yearly_score' | 'yearly_popular' | 'latest';
 
 export interface ReviewWithProfile extends Omit<Review, 'profiles'> {
   profiles: Pick<Profile, 'nickname' | 'total_recommends'>;

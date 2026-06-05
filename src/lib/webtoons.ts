@@ -10,6 +10,7 @@ const DEFAULT_LIST_LIMIT = 20;
 const VALID_LIST_LIMITS = [10, 20, 50, 100];
 const SEARCH_LIMIT = 80;
 const LIST_CANDIDATE_LIMIT = 7000;
+const VALID_SORTS: SortOption[] = ['featured', 'score', 'popular', 'weekly_score', 'weekly_comments', 'monthly_score', 'monthly_popular', 'yearly_score', 'yearly_popular', 'latest'];
 const INITIAL_RANGES: Record<string, [string, string | null]> = {
   'ㄱ': ['가', '나'],
   'ㄴ': ['나', '다'],
@@ -39,13 +40,24 @@ function withStats(webtoon: WebtoonRowData): WebtoonWithStats {
   const high_score_count = scores.filter((score) => score >= 8 && score <= 10).length;
   const one_score_count = scores.filter((score) => score === 1).length;
   const ten_score_count = scores.filter((score) => score === 10).length;
-  const weekStart = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const weekStart = now - 7 * 24 * 60 * 60 * 1000;
+  const monthStart = now - 30 * 24 * 60 * 60 * 1000;
+  const yearStart = now - 365 * 24 * 60 * 60 * 1000;
+
   const weeklyScores = (webtoon.reviews ?? [])
     .filter((r) => r.created_at && new Date(r.created_at).getTime() >= weekStart)
     .map((r) => Number(r.score));
   const weekly_comment_count = (webtoon.reviews ?? []).filter(
     (r) => r.created_at && new Date(r.created_at).getTime() >= weekStart && String(r.comment ?? '').trim().length > 0
   ).length;
+
+  const monthlyScores = (webtoon.reviews ?? [])
+    .filter((r) => r.created_at && new Date(r.created_at).getTime() >= monthStart)
+    .map((r) => Number(r.score));
+  const yearlyScores = (webtoon.reviews ?? [])
+    .filter((r) => r.created_at && new Date(r.created_at).getTime() >= yearStart)
+    .map((r) => Number(r.score));
   const avg_score = scores.length > 0
     ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
     : null;
@@ -69,6 +81,13 @@ function withStats(webtoon: WebtoonRowData): WebtoonWithStats {
   };
   const sources = webtoonSources?.length ? webtoonSources : [fallbackSource];
 
+  const monthly_avg_score = monthlyScores.length > 0
+    ? Math.round((monthlyScores.reduce((a, b) => a + b, 0) / monthlyScores.length) * 10) / 10
+    : null;
+  const yearly_avg_score = yearlyScores.length > 0
+    ? Math.round((yearlyScores.reduce((a, b) => a + b, 0) / yearlyScores.length) * 10) / 10
+    : null;
+
   return {
     ...rest,
     avg_score,
@@ -76,6 +95,10 @@ function withStats(webtoon: WebtoonRowData): WebtoonWithStats {
     weekly_avg_score,
     weekly_review_count: weeklyScores.length,
     weekly_comment_count,
+    monthly_avg_score,
+    monthly_review_count: monthlyScores.length,
+    yearly_avg_score,
+    yearly_review_count: yearlyScores.length,
     low_score_count,
     high_score_count,
     one_score_count,
@@ -128,39 +151,62 @@ function inferOrigin(webtoon: Webtoon & { sources: WebtoonSource[] }): Origin {
   return 'unknown';
 }
 
-function sourceWeight(webtoon: WebtoonWithStats) {
-  const platforms = new Set(webtoon.sources.map((source) => source.platform));
-  return (
-    (platforms.has('naver') ? 40 : 0) +
-    (platforms.has('kakao') ? 24 : 0) +
-    (platforms.has('ridi') ? 8 : 0) +
-    Math.max(platforms.size - 1, 0) * 12
-  );
+function platformTier(webtoon: WebtoonWithStats): number {
+  const platforms = new Set(webtoon.sources.map((s) => s.platform));
+  if (platforms.has('naver')) return 3;
+  if (platforms.has('kakao')) return 2;
+  if (platforms.has('ridi')) return 1;
+  return 0;
 }
 
 function featuredScore(webtoon: WebtoonWithStats) {
-  return sourceWeight(webtoon) + webtoon.review_count * 8 + (webtoon.avg_score ?? 0);
+  // 네이버(tier 3) > 카카오(tier 2) > 리디(tier 1) > 기타(tier 0)
+  // 같은 tier 내에서는 리뷰수 * 10 + 평점으로 세부 정렬
+  return platformTier(webtoon) * 100000 + webtoon.review_count * 10 + (webtoon.avg_score ?? 0);
 }
 
 function sortWebtoons(items: WebtoonWithStats[], sort: SortOption) {
   const byTitle = (a: WebtoonWithStats, b: WebtoonWithStats) => a.title.localeCompare(b.title, 'ko');
 
   return [...items].sort((a, b) => {
+    // 평점순: 평점 있는 것 > 없는 것 (avg_score null → -1로 처리)
     if (sort === 'score') {
-      return (b.avg_score ?? -1) - (a.avg_score ?? -1) || b.review_count - a.review_count || byTitle(a, b);
+      const hasA = a.avg_score !== null ? 1 : 0;
+      const hasB = b.avg_score !== null ? 1 : 0;
+      return hasB - hasA || (b.avg_score ?? 0) - (a.avg_score ?? 0) || b.review_count - a.review_count || byTitle(a, b);
     }
+    // 인기순: 리뷰 많은 순 (점수 무관)
     if (sort === 'popular') {
-      return b.review_count - a.review_count || (b.avg_score ?? -1) - (a.avg_score ?? -1) || featuredScore(b) - featuredScore(a) || byTitle(a, b);
+      return b.review_count - a.review_count || (b.avg_score ?? -1) - (a.avg_score ?? -1) || byTitle(a, b);
     }
     if (sort === 'weekly_score') {
-      return (b.weekly_avg_score ?? -1) - (a.weekly_avg_score ?? -1) || b.weekly_review_count - a.weekly_review_count || byTitle(a, b);
+      const hasA = a.weekly_avg_score !== null ? 1 : 0;
+      const hasB = b.weekly_avg_score !== null ? 1 : 0;
+      return hasB - hasA || (b.weekly_avg_score ?? 0) - (a.weekly_avg_score ?? 0) || b.weekly_review_count - a.weekly_review_count || byTitle(a, b);
     }
     if (sort === 'weekly_comments') {
-      return b.weekly_comment_count - a.weekly_comment_count || b.weekly_review_count - a.weekly_review_count || (b.weekly_avg_score ?? -1) - (a.weekly_avg_score ?? -1) || byTitle(a, b);
+      return b.weekly_comment_count - a.weekly_comment_count || b.weekly_review_count - a.weekly_review_count || byTitle(a, b);
+    }
+    if (sort === 'monthly_score') {
+      const hasA = a.monthly_avg_score !== null ? 1 : 0;
+      const hasB = b.monthly_avg_score !== null ? 1 : 0;
+      return hasB - hasA || (b.monthly_avg_score ?? 0) - (a.monthly_avg_score ?? 0) || b.monthly_review_count - a.monthly_review_count || byTitle(a, b);
+    }
+    if (sort === 'monthly_popular') {
+      return b.monthly_review_count - a.monthly_review_count || (b.monthly_avg_score ?? -1) - (a.monthly_avg_score ?? -1) || byTitle(a, b);
+    }
+    if (sort === 'yearly_score') {
+      const hasA = a.yearly_avg_score !== null ? 1 : 0;
+      const hasB = b.yearly_avg_score !== null ? 1 : 0;
+      return hasB - hasA || (b.yearly_avg_score ?? 0) - (a.yearly_avg_score ?? 0) || b.yearly_review_count - a.yearly_review_count || byTitle(a, b);
+    }
+    if (sort === 'yearly_popular') {
+      return b.yearly_review_count - a.yearly_review_count || (b.yearly_avg_score ?? -1) - (a.yearly_avg_score ?? -1) || byTitle(a, b);
     }
     if (sort === 'latest') {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     }
+    // 기본순: 네이버 > 카카오 > 리디 > 기타, 같은 tier 내 리뷰수순
     return featuredScore(b) - featuredScore(a) || byTitle(a, b);
   });
 }
@@ -202,7 +248,7 @@ export async function getWebtoons(
 
   query = query.order(sort === 'latest' ? 'created_at' : 'title', { ascending: sort !== 'latest' });
 
-  const needsClientSort = ['featured', 'score', 'popular', 'weekly_score', 'weekly_comments'].includes(sort);
+  const needsClientSort = (VALID_SORTS as string[]).includes(sort) && sort !== 'latest';
   query = needsClientSort ? query.range(0, LIST_CANDIDATE_LIMIT - 1) : query.range(from, to);
 
   let { data, error } = await query;

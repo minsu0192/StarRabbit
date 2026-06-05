@@ -10,6 +10,7 @@ import FilterBar from '@/components/FilterBar';
 import BunnyMascot from '@/components/BunnyMascot';
 import Header from '@/components/Header';
 import SiteFooter from '@/components/SiteFooter';
+import SortChips from '@/components/SortChips';
 import { createClient } from '@/lib/supabase/server';
 
 interface Props {
@@ -19,7 +20,7 @@ interface Props {
 export default async function Home({ searchParams }: Props) {
   const { sort, platform, status, page, size, initial, genre, audience, origin } = await searchParams;
   const supabase = await createClient();
-  const sortOption = (['featured', 'score', 'popular', 'weekly_score', 'weekly_comments', 'latest'].includes(sort ?? '') ? sort : 'featured') as SortOption;
+  const sortOption = (['featured', 'score', 'popular', 'weekly_score', 'weekly_comments', 'monthly_score', 'monthly_popular', 'yearly_score', 'yearly_popular', 'latest'].includes(sort ?? '') ? sort : 'featured') as SortOption;
   const currentPage = Math.max(Number(page ?? '1') || 1, 1);
   const pageSize = Number(size ?? '20') || 20;
   const [
@@ -104,16 +105,10 @@ export default async function Home({ searchParams }: Props) {
         <SearchBar />
       </div>
 
-      <nav className="mb-3 flex gap-2 overflow-x-auto px-4">
-        <Link href="/" className="h-9 whitespace-nowrap rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
-          유명작 먼저
-        </Link>
-        <Link href="/?sort=score" className="h-9 whitespace-nowrap rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
-          별점순
-        </Link>
-        <Link href="/?sort=popular" className="h-9 whitespace-nowrap rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
-          인기순
-        </Link>
+      <nav className="mb-3">
+        <Suspense>
+          <SortChips />
+        </Suspense>
       </nav>
 
       {(weeklyScoreItems.length > 0 || weeklyCommentItems.length > 0) && (

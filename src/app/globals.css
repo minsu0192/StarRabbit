@@ -57,3 +57,6 @@ textarea {
   background: #fde68a;
   color: #171717;
 }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
