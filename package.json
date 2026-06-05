@@ -13,7 +13,8 @@
     "collect:sources:kakao": "node scripts/collect-kakao-page-sources.mjs",
     "collect:sources:ridi": "node scripts/collect-ridi-sources.mjs",
     "upsert:sources": "node --env-file=.env.local scripts/upsert-webtoon-sources.mjs",
-    "merge:duplicates": "node --env-file=.env.local scripts/merge-duplicate-webtoons.mjs"
+    "merge:duplicates": "node --env-file=.env.local scripts/merge-duplicate-webtoons.mjs",
+    "clean:kakao-titles": "node --env-file=.env.local scripts/clean-kakao-titles.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

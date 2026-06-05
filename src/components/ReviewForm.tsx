@@ -37,7 +37,7 @@ export default function ReviewForm({ webtoonId, existingReview }: Props) {
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleSubmit = () => {
-    if (!comment.trim()) { setErrorMsg('한줄평을 입력해주세요'); return; }
+    if (comment.trim().length === 1) { setErrorMsg('한줄평은 비우거나 2자 이상 입력해주세요'); return; }
     setErrorMsg('');
     startTransition(async () => {
       const result = await fetch('/api/reviews', {
@@ -82,7 +82,9 @@ export default function ReviewForm({ webtoonId, existingReview }: Props) {
             {formatScore(existingReview.score)}
           </span>
         </div>
-        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-2">{existingReview.comment}</p>
+        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-2">
+          {existingReview.comment || '별점만 남겼어요'}
+        </p>
         <div className="flex gap-2">
           <button
             onClick={() => setIsEditing(true)}
@@ -129,11 +131,10 @@ export default function ReviewForm({ webtoonId, existingReview }: Props) {
         </div>
       </div>
 
-      {/* 한줄평 */}
       <textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        placeholder="이 웹툰 어땠나요? 솔직하게 남겨주세요."
+        placeholder="한줄평은 선택이에요. 별점만 남겨도 됩니다."
         maxLength={200}
         rows={3}
         className="w-full text-sm px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-transparent resize-none focus:outline-none focus:border-amber-400 dark:focus:border-amber-500 placeholder-gray-300 dark:placeholder-gray-600"
@@ -158,7 +159,7 @@ export default function ReviewForm({ webtoonId, existingReview }: Props) {
           disabled={isPending}
           className="flex-1 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-white text-sm font-bold transition-colors disabled:opacity-50"
         >
-          {isPending ? '저장 중...' : existingReview ? '수정 완료' : '평점 남기기'}
+          {isPending ? '저장 중...' : existingReview ? '수정 완료' : comment.trim() ? '평점 남기기' : '별점만 남기기'}
         </button>
       </div>
     </div>

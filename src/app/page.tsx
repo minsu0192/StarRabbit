@@ -11,15 +11,15 @@ import BunnyMascot from '@/components/BunnyMascot';
 import Header from '@/components/Header';
 
 interface Props {
-  searchParams: Promise<{ sort?: string; platform?: string; status?: string; page?: string; size?: string; initial?: string }>;
+  searchParams: Promise<{ sort?: string; platform?: string; status?: string; page?: string; size?: string; initial?: string; genre?: string; audience?: string }>;
 }
 
 export default async function Home({ searchParams }: Props) {
-  const { sort, platform, status, page, size, initial } = await searchParams;
-  const sortOption = (['score', 'popular', 'latest', 'title'].includes(sort ?? '') ? sort : 'score') as SortOption;
+  const { sort, platform, status, page, size, initial, genre, audience } = await searchParams;
+  const sortOption = (['featured', 'score', 'popular', 'weekly_score', 'weekly_comments', 'latest', 'title'].includes(sort ?? '') ? sort : 'featured') as SortOption;
   const currentPage = Math.max(Number(page ?? '1') || 1, 1);
   const pageSize = Number(size ?? '100') || 100;
-  const { items: webtoons, total, limit } = await getWebtoons(sortOption, platform, status, currentPage, pageSize, initial);
+  const { items: webtoons, total, limit } = await getWebtoons(sortOption, platform, status, currentPage, pageSize, initial, genre, audience);
   const totalPages = Math.max(Math.ceil(total / limit), 1);
   const clampedPage = Math.min(currentPage, totalPages);
 
@@ -32,10 +32,12 @@ export default async function Home({ searchParams }: Props) {
   const statusLabel = status === 'ongoing' ? '연재중' : status === 'completed' ? '완결' : null;
   const pageHref = (nextPage: number) => {
     const params = new URLSearchParams();
-    if (sort && sort !== 'score') params.set('sort', sort);
+    if (sort && sort !== 'featured') params.set('sort', sort);
     if (platform) params.set('platform', platform);
     if (status) params.set('status', status);
     if (initial) params.set('initial', initial);
+    if (genre) params.set('genre', genre);
+    if (audience) params.set('audience', audience);
     if (limit !== 100) params.set('size', String(limit));
     if (nextPage > 1) params.set('page', String(nextPage));
     const query = params.toString();
@@ -63,6 +65,21 @@ export default async function Home({ searchParams }: Props) {
         <SearchBar />
       </div>
 
+      <nav className="mb-3 flex gap-2 overflow-x-auto px-4">
+        <Link href="/" className="h-9 whitespace-nowrap rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
+          유명작 먼저
+        </Link>
+        <Link href="/?sort=weekly_score" className="h-9 whitespace-nowrap rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
+          금주의 웹툰
+        </Link>
+        <Link href="/?sort=weekly_comments" className="h-9 whitespace-nowrap rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
+          금주의 댓글
+        </Link>
+        <Link href="/?sort=score" className="h-9 whitespace-nowrap rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
+          별점순
+        </Link>
+      </nav>
+
       <div className="mb-3">
         <Suspense>
           <FilterBar />
@@ -72,7 +89,7 @@ export default async function Home({ searchParams }: Props) {
       <div className="px-4 pb-2">
         <div className="flex items-center justify-between border-y border-gray-100 py-2 dark:border-gray-900">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {[platformLabel, initial, statusLabel].filter(Boolean).join(' · ') || '전체 웹툰'}
+            {[platformLabel, genre, initial, statusLabel, audience === 'all' ? 'BL·GL 포함' : null].filter(Boolean).join(' · ') || '전체 웹툰'}
           </p>
           <p className="text-xs font-bold text-gray-800 dark:text-gray-100">
             {total.toLocaleString()}개 중 {webtoons.length.toLocaleString()}개

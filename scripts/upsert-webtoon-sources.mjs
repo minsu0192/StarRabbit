@@ -19,6 +19,7 @@
  */
 
 import { readFile } from 'node:fs/promises';
+import { cleanDisplayTitle, isKakaoExcludedTitle, normalizeTitle } from './title-normalization.mjs';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -44,23 +45,14 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
-function normalizeTitle(title) {
-  return String(title ?? '')
-    .normalize('NFKC')
-    .replace(/\[[^\]]*(?:단행본|개정판|완전판|완결|외전|소장판|컬러판|19세|15세)[^\]]*\]/gi, '')
-    .replace(/\([^)]*(?:단행본|개정판|완전판|완결|외전|소장판|컬러판|19세|15세)[^)]*\)/gi, '')
-    .replace(/[~!@#$%^&*_=+|\\:;"'<>,.?/`·ㆍ…\s-]/g, '')
-    .trim()
-    .toLowerCase();
-}
-
 function sanitizeRow(row) {
   const platform = String(row.platform ?? '').trim();
-  const title = String(row.title ?? '').trim();
+  const title = cleanDisplayTitle(row.title);
   const author = String(row.author ?? '').trim();
   const status = row.status ? String(row.status).trim() : null;
 
   if (!VALID_PLATFORMS.has(platform)) throw new Error(`Invalid platform: ${platform}`);
+  if (platform === 'kakao' && isKakaoExcludedTitle(title)) return null;
   if (!title) throw new Error('Missing title');
   if (!author) throw new Error(`Missing author for ${title}`);
   if (status && !VALID_STATUSES.has(status)) throw new Error(`Invalid status for ${title}: ${status}`);
@@ -173,7 +165,7 @@ async function upsertSource(webtoon, row) {
   if (!res.ok) throw new Error(await res.text());
 }
 
-let input = JSON.parse(await readFile(inputPath, 'utf8')).map(sanitizeRow);
+let input = JSON.parse(await readFile(inputPath, 'utf8')).map(sanitizeRow).filter(Boolean);
 if (missingOnly) {
   const existingSourceKeys = await readExistingSourceKeys();
   input = input.filter((row) => {

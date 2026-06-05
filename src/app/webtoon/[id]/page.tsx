@@ -10,6 +10,7 @@ import PlatformBadge, { PlatformBadges } from '@/components/PlatformBadge';
 import BunnyMascot from '@/components/BunnyMascot';
 import LoginButton from '@/components/LoginButton';
 import ReviewForm from '@/components/ReviewForm';
+import PredictionPanel from '@/components/PredictionPanel';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -142,6 +143,8 @@ export default async function WebtoonDetailPage({ params }: Props) {
         </div>
       </section>
 
+      <PredictionPanel webtoonId={id} />
+
       <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-900">
         <h2 className="text-sm font-bold mb-3">
           {user ? (userReview ? '내 한줄평' : '평점 남기기') : '평점 남기기'}
@@ -156,14 +159,14 @@ export default async function WebtoonDetailPage({ params }: Props) {
       <section className="flex-1 px-0">
         <div className="px-4 py-3">
           <h2 className="text-sm font-bold">
-            한줄평{otherReviews.length > 0 ? ` (${otherReviews.length})` : ''}
+            평가{otherReviews.length > 0 ? ` (${otherReviews.length})` : ''}
           </h2>
         </div>
 
         {otherReviews.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3 text-gray-400">
             <BunnyMascot size={44} />
-            <p className="text-sm">아직 한줄평이 없어요</p>
+            <p className="text-sm">아직 평가가 없어요</p>
           </div>
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-gray-900">
@@ -202,7 +205,7 @@ function ReviewItem({ review }: { review: ReviewWithProfile }) {
             <span className={`text-[10px] font-medium ${rank.color}`}>{rank.label}</span>
           </div>
           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">
-            {review.comment}
+            {review.comment || '별점만 남겼어요'}
           </p>
           <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">
             <span>{formatDate(review.created_at)}</span>

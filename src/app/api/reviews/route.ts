@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
   if (!webtoonId) return errorResponse('작품 정보가 없습니다');
   if (safeScore === null) return errorResponse('평점은 1.0점부터 10.0점까지 0.5점 단위로 입력해주세요');
-  if (comment.length < 2) return errorResponse('한줄평은 2자 이상 입력해주세요');
+  if (comment.length === 1) return errorResponse('한줄평은 비우거나 2자 이상 입력해주세요');
   if (comment.length > 200) return errorResponse('한줄평은 200자 이하여야 합니다');
 
   const { error } = await supabase.from('reviews').upsert(

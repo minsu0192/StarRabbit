@@ -8,6 +8,7 @@
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
+import { cleanDisplayTitle, isKakaoExcludedTitle } from './title-normalization.mjs';
 
 const USER_AGENT = 'Mozilla/5.0';
 const OUTPUT = 'data/sources/kakao-page.json';
@@ -87,10 +88,12 @@ async function fetchJson(url) {
 function rowFromSearchItem(item) {
   if (!item?.series_id || item.category_uid !== 10 || item.category !== '웹툰') return null;
   if (!item.title || !item.authors) return null;
+  const title = cleanDisplayTitle(item.title);
+  if (!title || isKakaoExcludedTitle(title)) return null;
 
   return {
     platform: 'kakao',
-    title: String(item.title).trim(),
+    title,
     author: String(item.authors).replace(/,/g, ' / ').trim(),
     external_id: String(item.series_id),
     source_url: `https://page.kakao.com/content/${item.series_id}`,
@@ -190,10 +193,12 @@ async function fetchSeries(seriesId) {
   });
 
   if (!content?.title || !content?.authors) return null;
+  const title = cleanDisplayTitle(content.title);
+  if (!title || isKakaoExcludedTitle(title)) return null;
 
   return {
     platform: 'kakao',
-    title: String(content.title).trim(),
+    title,
     author: String(content.authors).replace(/,/g, ' / ').trim(),
     external_id: String(content.seriesId),
     source_url: url,

@@ -17,10 +17,31 @@ const STATUSES = [
 ];
 
 const SORTS = [
+  { value: 'featured', label: '기본순' },
   { value: 'score', label: '평점순' },
   { value: 'popular', label: '인기순' },
+  { value: 'weekly_score', label: '금주평점' },
+  { value: 'weekly_comments', label: '금주댓글' },
   { value: 'latest', label: '최신순' },
   { value: 'title', label: '가나다순' },
+];
+
+const GENRES = [
+  { value: '', label: '전체' },
+  { value: '로맨스', label: '로맨스' },
+  { value: '드라마', label: '드라마' },
+  { value: '판타지', label: '판타지' },
+  { value: '액션', label: '액션' },
+  { value: '무협', label: '무협' },
+  { value: '학원', label: '학원' },
+  { value: '일상', label: '일상' },
+  { value: '개그', label: '개그' },
+  { value: '스릴러', label: '스릴러' },
+];
+
+const AUDIENCES = [
+  { value: '', label: '일반' },
+  { value: 'all', label: 'BL·GL 포함' },
 ];
 
 const INITIALS = [
@@ -53,11 +74,13 @@ export default function FilterBar() {
   const router = useRouter();
   const sp = useSearchParams();
 
-  const sort = sp.get('sort') ?? 'score';
+  const sort = sp.get('sort') ?? 'featured';
   const platform = sp.get('platform') ?? '';
   const status = sp.get('status') ?? '';
   const initial = sp.get('initial') ?? '';
   const size = sp.get('size') ?? '100';
+  const genre = sp.get('genre') ?? '';
+  const audience = sp.get('audience') ?? '';
 
   const update = (key: string, value: string) => {
     const params = new URLSearchParams(sp.toString());
@@ -80,7 +103,14 @@ export default function FilterBar() {
       <div className="space-y-2 rounded-md border border-gray-100 bg-white p-3 dark:border-gray-900 dark:bg-gray-950">
         <ControlGroup label="정렬">
           {SORTS.map(({ value, label }) => (
-            <button key={value} onClick={() => update('sort', value)} className={chip(sort === value)}>
+            <button key={value} onClick={() => update('sort', value === 'featured' ? '' : value)} className={chip(sort === value || (!sp.get('sort') && value === 'featured'))}>
+              {label}
+            </button>
+          ))}
+        </ControlGroup>
+        <ControlGroup label="장르">
+          {GENRES.map(({ value, label }) => (
+            <button key={`g-${value}`} onClick={() => update('genre', value)} className={chip(genre === value)}>
               {label}
             </button>
           ))}
@@ -102,6 +132,13 @@ export default function FilterBar() {
         <ControlGroup label="상태">
           {STATUSES.map(({ value, label }) => (
             <button key={`s-${value}`} onClick={() => update('status', value)} className={chip(status === value)}>
+              {label}
+            </button>
+          ))}
+        </ControlGroup>
+        <ControlGroup label="취향">
+          {AUDIENCES.map(({ value, label }) => (
+            <button key={`a-${value}`} onClick={() => update('audience', value)} className={chip(audience === value)}>
               {label}
             </button>
           ))}

@@ -9,6 +9,8 @@
  *   SUPABASE_SERVICE_ROLE_KEY
  */
 
+import { normalizeTitle } from './title-normalization.mjs';
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const NAVER_WEEKDAY_API = 'https://comic.naver.com/api/webtoon/titlelist/weekday';
@@ -17,10 +19,6 @@ const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
   process.exit(1);
-}
-
-function normalizeTitle(title) {
-  return String(title ?? '').replace(/\s+/g, '').trim().toLowerCase();
 }
 
 async function fetchDbWebtoons() {

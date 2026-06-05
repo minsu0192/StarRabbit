@@ -9,6 +9,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { normalizeTitle } from './title-normalization.mjs';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -19,16 +20,6 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-
-function normalizeTitle(title) {
-  return String(title ?? '')
-    .normalize('NFKC')
-    .replace(/\[[^\]]*(?:단행본|개정판|완전판|완결|외전|소장판|컬러판|19세|15세)[^\]]*\]/gi, '')
-    .replace(/\([^)]*(?:단행본|개정판|완전판|완결|외전|소장판|컬러판|19세|15세)[^)]*\)/gi, '')
-    .replace(/[~!@#$%^&*_=+|\\:;"'<>,.?/`·ㆍ…\s-]/g, '')
-    .trim()
-    .toLowerCase();
-}
 
 async function readAll(table, select) {
   const rows = [];
