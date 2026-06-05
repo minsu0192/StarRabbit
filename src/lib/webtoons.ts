@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient, hasServiceRoleConfig } from '@/lib/supabase/service';
 import { Webtoon, WebtoonSource, WebtoonWithStats, SortOption, ReviewWithProfile, Origin } from '@/types';
 
 const VALID_PLATFORMS = ['naver', 'kakao', 'ridi', 'etc'];
@@ -240,8 +241,9 @@ export async function getWebtoons(
   const from = (safePage - 1) * safeLimit;
   const to = from + safeLimit - 1;
 
-  // Reviews 를 별도 쿼리로 가져와서 nested 쿼리 의존성 제거
-  const reviewsPromise = supabase
+  // service 클라이언트로 reviews 직접 조회 — anon 권한 문제 우회
+  const reviewsClient = hasServiceRoleConfig() ? createServiceClient() : supabase;
+  const reviewsPromise = reviewsClient
     .from('reviews')
     .select('webtoon_id, score, created_at, comment')
     .then(({ data }) => {
@@ -353,10 +355,11 @@ export async function getWebtoons(
 
 export async function getWebtoon(id: string): Promise<WebtoonWithStats | null> {
   const supabase = await createClient();
+  const reviewsClient = hasServiceRoleConfig() ? createServiceClient() : supabase;
 
   const [webtoonResult, reviewsResult] = await Promise.all([
     supabase.from('webtoons').select(`*, webtoon_sources(*)`).eq('id', id).single(),
-    supabase.from('reviews').select('webtoon_id, score, created_at, comment').eq('webtoon_id', id),
+    reviewsClient.from('reviews').select('webtoon_id, score, created_at, comment').eq('webtoon_id', id),
   ]);
 
   let { data, error } = webtoonResult;
@@ -469,7 +472,8 @@ export async function searchWebtoons(query: string): Promise<WebtoonWithStats[]>
   }
 
   const allIds = [...byId.keys()];
-  const { data: reviewData } = await supabase
+  const reviewsClient2 = hasServiceRoleConfig() ? createServiceClient() : supabase;
+  const { data: reviewData } = await reviewsClient2
     .from('reviews')
     .select('webtoon_id, score, created_at, comment')
     .in('webtoon_id', allIds);
