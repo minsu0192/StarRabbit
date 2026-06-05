@@ -10,7 +10,6 @@ import PlatformBadge, { PlatformBadges } from '@/components/PlatformBadge';
 import BunnyMascot from '@/components/BunnyMascot';
 import LoginButton from '@/components/LoginButton';
 import ReviewForm from '@/components/ReviewForm';
-import PredictionPanel from '@/components/PredictionPanel';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -142,8 +141,6 @@ export default async function WebtoonDetailPage({ params }: Props) {
           )}
         </div>
       </section>
-
-      <PredictionPanel webtoonId={id} />
 
       <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-900">
         <h2 className="text-sm font-bold mb-3">

@@ -28,6 +28,14 @@ function ProfileIcon() {
   );
 }
 
+function CheerIcon() {
+  return (
+    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4ZM5 6H3v1a4 4 0 0 0 4 4M19 6h2v1a4 4 0 0 1-4 4" />
+    </svg>
+  );
+}
+
 export default function BottomNav() {
   const path = usePathname();
 
@@ -50,6 +58,7 @@ export default function BottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 z-20 mx-auto flex max-w-2xl justify-around border-t border-gray-100 bg-[var(--background)]/95 backdrop-blur dark:border-gray-900">
       {item('/', <HomeIcon />, '홈')}
       {item('/search', <SearchIcon />, '검색')}
+      {item('/cheer', <CheerIcon />, '응원')}
       {item('/profile', <ProfileIcon />, 'MY')}
     </nav>
   );

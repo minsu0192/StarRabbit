@@ -4,7 +4,7 @@ import { Webtoon, WebtoonSource, WebtoonWithStats, SortOption, ReviewWithProfile
 const VALID_PLATFORMS = ['naver', 'kakao', 'ridi', 'etc'];
 const VALID_STATUSES = ['ongoing', 'completed'];
 const VALID_AUDIENCES = ['general', 'all'];
-const VALID_GENRES = ['로맨스', '드라마', '판타지', '액션', '무협', '학원', '일상', '개그', '스릴러', '공포'];
+const VALID_GENRES = ['로맨스', '드라마', '판타지', '액션', '무협', '학원', '일상', '개그', '스릴러', '공포', '스포츠'];
 const DEFAULT_LIST_LIMIT = 100;
 const VALID_LIST_LIMITS = [50, 100, 200];
 const SEARCH_LIMIT = 80;

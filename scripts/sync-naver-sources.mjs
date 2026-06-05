@@ -8,6 +8,8 @@
  *   node --env-file=.env.local scripts/sync-naver-sources.mjs
  */
 
+import { inferGenre } from './genre-classifier.mjs';
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const NAVER_API = 'https://comic.naver.com/api/webtoon/titlelist/weekday';
@@ -47,15 +49,22 @@ async function fetchNaverRows() {
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
 
-  return [...byId.values()].map((item) => ({
-    platform: 'naver',
-    external_id: String(item.titleId),
-    source_url: `https://comic.naver.com/webtoon/list?titleId=${item.titleId}`,
-    title: String(item.titleName ?? '').trim(),
-    author: String(item.author ?? item.writers?.map((w) => w.name).join(' / ') ?? '').trim(),
-    genre: null,
-    status: item.finish ? 'completed' : 'ongoing',
-  })).filter((row) => row.title && row.author);
+  return [...byId.values()].map((item) => {
+    const title = String(item.titleName ?? '').trim();
+    return {
+      platform: 'naver',
+      external_id: String(item.titleId),
+      source_url: `https://comic.naver.com/webtoon/list?titleId=${item.titleId}`,
+      title,
+      author: String(item.author ?? item.writers?.map((w) => w.name).join(' / ') ?? '').trim(),
+      genre: inferGenre({
+        title,
+        genre: item.genreName ?? item.representGenre ?? item.genre,
+        sourceGenres: [item.themeName, item.categoryName, item.webtoonLevelCode],
+      }),
+      status: item.finish ? 'completed' : 'ongoing',
+    };
+  }).filter((row) => row.title && row.author);
 }
 
 async function readAllWebtoons() {

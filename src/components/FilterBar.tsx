@@ -37,6 +37,8 @@ const GENRES = [
   { value: '일상', label: '일상' },
   { value: '개그', label: '개그' },
   { value: '스릴러', label: '스릴러' },
+  { value: '공포', label: '공포' },
+  { value: '스포츠', label: '스포츠' },
 ];
 
 const AUDIENCES = [
