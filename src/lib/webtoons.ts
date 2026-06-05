@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server';
-import { createServiceClient, hasServiceRoleConfig } from '@/lib/supabase/service';
 import { Webtoon, WebtoonSource, WebtoonWithStats, SortOption, ReviewWithProfile, Origin } from '@/types';
 
 const VALID_PLATFORMS = ['naver', 'kakao', 'ridi', 'etc'];
@@ -241,20 +240,26 @@ export async function getWebtoons(
   const from = (safePage - 1) * safeLimit;
   const to = from + safeLimit - 1;
 
-  // service 클라이언트로 reviews 직접 조회 — anon 권한 문제 우회
-  const reviewsClient = hasServiceRoleConfig() ? createServiceClient() : supabase;
-  const reviewsPromise = reviewsClient
-    .from('reviews')
-    .select('webtoon_id, score, created_at, comment')
-    .then(({ data }) => {
-      const map = new Map<string, ReviewStat[]>();
-      for (const r of data ?? []) {
-        const list = map.get(r.webtoon_id) ?? [];
-        list.push({ score: Number(r.score), created_at: r.created_at ?? undefined, comment: r.comment });
-        map.set(r.webtoon_id, list);
-      }
-      return map;
-    });
+  // PostgREST REST API 직접 호출 — Supabase 클라이언트 권한 문제 완전 우회
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const apiKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const reviewsPromise = fetch(
+    `${supabaseUrl}/rest/v1/reviews?select=webtoon_id,score,created_at,comment`,
+    {
+      headers: { apikey: apiKey, Authorization: `Bearer ${apiKey}` },
+      cache: 'no-store',
+    }
+  ).then(async (res) => {
+    const map = new Map<string, ReviewStat[]>();
+    if (!res.ok) return map;
+    const rows = await res.json() as { webtoon_id: string; score: string | number; created_at: string | null; comment: string | null }[];
+    for (const r of rows) {
+      const list = map.get(r.webtoon_id) ?? [];
+      list.push({ score: Number(r.score), created_at: r.created_at ?? undefined, comment: r.comment });
+      map.set(r.webtoon_id, list);
+    }
+    return map;
+  }).catch(() => new Map<string, ReviewStat[]>());
 
   let query = supabase
     .from('webtoons')
@@ -355,11 +360,15 @@ export async function getWebtoons(
 
 export async function getWebtoon(id: string): Promise<WebtoonWithStats | null> {
   const supabase = await createClient();
-  const reviewsClient = hasServiceRoleConfig() ? createServiceClient() : supabase;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const apiKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  const [webtoonResult, reviewsResult] = await Promise.all([
+  const [webtoonResult, reviewsRes] = await Promise.all([
     supabase.from('webtoons').select(`*, webtoon_sources(*)`).eq('id', id).single(),
-    reviewsClient.from('reviews').select('webtoon_id, score, created_at, comment').eq('webtoon_id', id),
+    fetch(
+      `${supabaseUrl}/rest/v1/reviews?select=webtoon_id,score,created_at,comment&webtoon_id=eq.${id}`,
+      { headers: { apikey: apiKey, Authorization: `Bearer ${apiKey}` }, cache: 'no-store' }
+    ),
   ]);
 
   let { data, error } = webtoonResult;
@@ -373,7 +382,11 @@ export async function getWebtoon(id: string): Promise<WebtoonWithStats | null> {
 
   if (error || !data) return null;
 
-  const reviews = (reviewsResult.data ?? []).map((r) => ({
+  const reviewRows = reviewsRes.ok
+    ? await reviewsRes.json() as { score: string | number; created_at: string | null; comment: string | null }[]
+    : [];
+
+  const reviews = reviewRows.map((r) => ({
     score: Number(r.score),
     created_at: r.created_at ?? undefined,
     comment: r.comment,
@@ -472,14 +485,17 @@ export async function searchWebtoons(query: string): Promise<WebtoonWithStats[]>
   }
 
   const allIds = [...byId.keys()];
-  const reviewsClient2 = hasServiceRoleConfig() ? createServiceClient() : supabase;
-  const { data: reviewData } = await reviewsClient2
-    .from('reviews')
-    .select('webtoon_id, score, created_at, comment')
-    .in('webtoon_id', allIds);
+  const supabaseUrl2 = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const apiKey2 = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const idsParam = allIds.map((id) => `"${id}"`).join(',');
+  const reviewRes2 = await fetch(
+    `${supabaseUrl2}/rest/v1/reviews?select=webtoon_id,score,created_at,comment&webtoon_id=in.(${idsParam})`,
+    { headers: { apikey: apiKey2, Authorization: `Bearer ${apiKey2}` }, cache: 'no-store' }
+  ).catch(() => null);
+  const reviewData = reviewRes2?.ok ? await reviewRes2.json() as { webtoon_id: string; score: string | number; created_at: string | null; comment: string | null }[] : [];
 
   const reviewMap = new Map<string, ReviewStat[]>();
-  for (const r of reviewData ?? []) {
+  for (const r of reviewData) {
     const list = reviewMap.get(r.webtoon_id) ?? [];
     list.push({ score: Number(r.score), created_at: r.created_at ?? undefined, comment: r.comment });
     reviewMap.set(r.webtoon_id, list);
