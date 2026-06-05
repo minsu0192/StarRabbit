@@ -160,9 +160,12 @@ function platformTier(webtoon: WebtoonWithStats): number {
 }
 
 function featuredScore(webtoon: WebtoonWithStats) {
-  // 네이버(tier 3) > 카카오(tier 2) > 리디(tier 1) > 기타(tier 0)
-  // 같은 tier 내에서는 리뷰수 * 10 + 평점으로 세부 정렬
-  return platformTier(webtoon) * 100000 + webtoon.review_count * 10 + (webtoon.avg_score ?? 0);
+  // 리뷰 있는 작품 우선 — 리뷰수 많고 평점 높을수록 위
+  // 리뷰 없으면 플랫폼 순(네이버 > 카카오 > 리디 > 기타)으로 하단 정렬
+  if (webtoon.review_count > 0) {
+    return 2_000_000 + webtoon.review_count * 1000 + (webtoon.avg_score ?? 0) * 10 + platformTier(webtoon);
+  }
+  return platformTier(webtoon) * 100_000;
 }
 
 function sortWebtoons(items: WebtoonWithStats[], sort: SortOption) {
