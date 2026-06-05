@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { containsProfanity, containsPromoLink } from '@/lib/filter';
 
 function normalizeScore(score: number) {
   if (!Number.isFinite(score)) return null;
@@ -30,6 +31,8 @@ export async function createOrUpdateReview(
   const trimmed = comment.trim().replace(/\s+/g, ' ');
   if (trimmed.length === 1) return { error: '한줄평은 비우거나 2자 이상 입력해주세요' };
   if (trimmed.length > 200) return { error: '한줄평은 200자 이하여야 합니다' };
+  if (trimmed && containsProfanity(trimmed)) return { error: '금지된 표현이 포함되어 있습니다' };
+  if (trimmed && containsPromoLink(trimmed)) return { error: '외부 링크나 홍보성 내용은 작성할 수 없습니다' };
 
   const { error } = await supabase.from('reviews').upsert(
     { webtoon_id: webtoonId, user_id: user.id, score: safeScore, comment: trimmed },
@@ -97,4 +100,31 @@ export async function updateNickname(
   return error
     ? { error: error.code === '23505' ? '이미 사용 중인 닉네임입니다' : error.message }
     : {};
+}
+
+export async function reportReview(
+  reviewId: string,
+  reason: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: '로그인이 필요합니다' };
+
+  const trimmedReason = reason.trim().slice(0, 100);
+  if (!trimmedReason) return { error: '신고 사유를 입력해주세요' };
+
+  const { data: existing } = await supabase
+    .from('reports')
+    .select('id')
+    .eq('review_id', reviewId)
+    .eq('reporter_id', user.id)
+    .maybeSingle();
+
+  if (existing) return { error: '이미 신고한 한줄평입니다' };
+
+  const { error } = await supabase
+    .from('reports')
+    .insert({ review_id: reviewId, reporter_id: user.id, reason: trimmedReason });
+
+  return error ? { error: error.message } : {};
 }

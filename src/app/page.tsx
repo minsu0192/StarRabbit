@@ -9,6 +9,7 @@ import SearchBar from '@/components/SearchBar';
 import FilterBar from '@/components/FilterBar';
 import BunnyMascot from '@/components/BunnyMascot';
 import Header from '@/components/Header';
+import SiteFooter from '@/components/SiteFooter';
 import { createClient } from '@/lib/supabase/server';
 
 interface Props {
@@ -26,13 +27,19 @@ export default async function Home({ searchParams }: Props) {
     { items: weeklyScoreWebtoons },
     { items: weeklyCommentWebtoons },
     noticeResult,
+    bannerResult,
   ] = await Promise.all([
     getWebtoons(sortOption, platform, status, currentPage, pageSize, initial, genre, audience, origin),
     getWebtoons('weekly_score', platform, status, 1, 20, initial, genre, audience, origin),
     getWebtoons('weekly_comments', platform, status, 1, 20, initial, genre, audience, origin),
     supabase.from('site_settings').select('value').eq('key', 'top_notice').maybeSingle(),
+    supabase.from('site_settings').select('key, value').in('key', ['banner_image_url', 'banner_link_url', 'banner_alt_text']),
   ]);
   const topNotice = noticeResult.error ? null : noticeResult.data?.value?.trim();
+  const bannerSettings = bannerResult.data ?? [];
+  const bannerImageUrl = bannerSettings.find((s) => s.key === 'banner_image_url')?.value?.trim() ?? '';
+  const bannerLinkUrl = bannerSettings.find((s) => s.key === 'banner_link_url')?.value?.trim() ?? '';
+  const bannerAltText = bannerSettings.find((s) => s.key === 'banner_alt_text')?.value?.trim() ?? '광고';
   const totalPages = Math.max(Math.ceil(total / limit), 1);
   const clampedPage = Math.min(currentPage, totalPages);
 
@@ -69,6 +76,15 @@ export default async function Home({ searchParams }: Props) {
         <div className="border-b border-amber-100 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 dark:border-amber-950 dark:bg-amber-950/30 dark:text-amber-300">
           {topNotice}
         </div>
+      )}
+
+      {bannerImageUrl && (
+        <a href={bannerLinkUrl || undefined} target="_blank" rel="noopener noreferrer sponsored"
+          className="block border-b border-gray-100 dark:border-gray-900">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={bannerImageUrl} alt={bannerAltText} className="w-full object-cover max-h-20" />
+          <p className="px-3 py-1 text-[10px] text-right text-gray-300 dark:text-gray-700">광고</p>
+        </a>
       )}
 
       <section className="px-4 pb-4 pt-5">
@@ -173,9 +189,7 @@ export default async function Home({ searchParams }: Props) {
         </nav>
       )}
 
-      <footer className="py-6 text-center text-xs text-gray-300 dark:text-gray-700">
-        © 2026 별토끼
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

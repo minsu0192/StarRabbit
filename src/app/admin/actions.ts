@@ -79,6 +79,24 @@ export async function suspendUserAsAdmin(formData: FormData) {
   revalidatePath('/admin');
 }
 
+export async function updateBannerAd(formData: FormData) {
+  const user = await requireAdmin();
+  const service = requireServiceRole();
+  const imageUrl = nonEmpty(formData.get('imageUrl')).slice(0, 500);
+  const linkUrl = nonEmpty(formData.get('linkUrl')).slice(0, 500);
+  const altText = nonEmpty(formData.get('altText')).slice(0, 100);
+
+  const { error } = await service.from('site_settings').upsert([
+    { key: 'banner_image_url', value: imageUrl, updated_by: user.id, updated_at: new Date().toISOString() },
+    { key: 'banner_link_url', value: linkUrl, updated_by: user.id, updated_at: new Date().toISOString() },
+    { key: 'banner_alt_text', value: altText || '광고', updated_by: user.id, updated_at: new Date().toISOString() },
+  ]);
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/');
+  revalidatePath('/admin');
+}
+
 export async function createCheerEvent(formData: FormData) {
   await requireAdmin();
   const service = requireServiceRole();

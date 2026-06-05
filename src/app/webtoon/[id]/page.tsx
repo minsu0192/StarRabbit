@@ -10,6 +10,9 @@ import PlatformBadge, { PlatformBadges } from '@/components/PlatformBadge';
 import BunnyMascot from '@/components/BunnyMascot';
 import LoginButton from '@/components/LoginButton';
 import ReviewForm from '@/components/ReviewForm';
+import ReportButton from '@/components/ReportButton';
+import SiteFooter from '@/components/SiteFooter';
+import { getDiagnosis } from '@/lib/diagnosis';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -52,6 +55,7 @@ export default async function WebtoonDetailPage({ params }: Props) {
     count: reviews.filter((r) => Math.floor(r.score) === s).length,
   }));
   const maxCount = Math.max(...scoreDistribution.map((d) => d.count), 1);
+  const diagnosis = getDiagnosis(webtoon);
 
   // 타인 리뷰 목록 (내 리뷰 제외)
   const otherReviews = user
@@ -140,6 +144,13 @@ export default async function WebtoonDetailPage({ params }: Props) {
             </div>
           )}
         </div>
+
+        {diagnosis && (
+          <div className={`mt-4 rounded-lg border px-3 py-2.5 ${diagnosis.bgClass}`}>
+            <span className={`text-xs font-black ${diagnosis.colorClass}`}>{diagnosis.label}</span>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{diagnosis.desc}</p>
+          </div>
+        )}
       </section>
 
       <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-900">
@@ -174,9 +185,7 @@ export default async function WebtoonDetailPage({ params }: Props) {
         )}
       </section>
 
-      <footer className="py-6 text-center text-xs text-gray-300 dark:text-gray-700">
-        © 2026 별토끼
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
@@ -204,7 +213,7 @@ function ReviewItem({ review }: { review: ReviewWithProfile }) {
           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">
             {review.comment || '별점만 남겼어요'}
           </p>
-          <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">
+          <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gray-400 dark:text-gray-500 flex-wrap">
             <span>{formatDate(review.created_at)}</span>
             {review.recommend_count > 0 && (
               <>
@@ -212,6 +221,8 @@ function ReviewItem({ review }: { review: ReviewWithProfile }) {
                 <span>♥ {review.recommend_count}</span>
               </>
             )}
+            <span>·</span>
+            <ReportButton reviewId={review.id} />
           </div>
         </div>
         <div className="shrink-0">

@@ -3,6 +3,7 @@ export const runtime = 'edge';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import Header from '@/components/Header';
+import SiteFooter from '@/components/SiteFooter';
 import NicknameForm from '@/components/NicknameForm';
 import ScoreBadge from '@/components/ScoreBadge';
 import BunnyMascot from '@/components/BunnyMascot';
@@ -165,9 +166,7 @@ export default async function ProfilePage() {
         )}
       </section>
 
-      <footer className="py-6 text-center text-xs text-gray-300 dark:text-gray-700">
-        © 2026 별토끼
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
