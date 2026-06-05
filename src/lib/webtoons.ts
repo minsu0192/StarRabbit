@@ -3,7 +3,6 @@ import { Webtoon, WebtoonSource, WebtoonWithStats, SortOption, ReviewWithProfile
 
 const VALID_PLATFORMS = ['naver', 'kakao', 'ridi', 'etc'];
 const VALID_STATUSES = ['ongoing', 'completed'];
-const VALID_AUDIENCES = ['general', 'all'];
 const VALID_ORIGINS = ['korea', 'japan', 'china', 'unknown'];
 const VALID_GENRES = ['로맨스', '드라마', '판타지', '액션', '무협', '학원', '일상', '개그', '스릴러', '공포', '스포츠'];
 const DEFAULT_LIST_LIMIT = 20;
@@ -126,15 +125,6 @@ function applyInitialFilter<T extends { gte: (column: string, value: string) => 
   return range[1] ? query.lt('title', range[1]) : query;
 }
 
-function isBlGlWebtoon(webtoon: WebtoonWithStats) {
-  const value = [
-    webtoon.title,
-    webtoon.genre,
-    ...webtoon.sources.flatMap((source) => [source.title, source.genre]),
-  ].filter(Boolean).join(' ').toLowerCase();
-  return /(^|[^a-z])(?:bl|gl)([^a-z]|$)|비엘|백합/.test(value);
-}
-
 function inferOrigin(webtoon: Webtoon & { sources: WebtoonSource[] }): Origin {
   const platforms = new Set(webtoon.sources.map((source) => source.platform));
   const value = [
@@ -219,7 +209,6 @@ export async function getWebtoons(
   limit?: number,
   initial?: string,
   genre?: string,
-  audience: string = 'general',
   origin?: string,
 ): Promise<{ items: WebtoonWithStats[]; total: number; page: number; limit: number }> {
   const supabase = await createClient();
@@ -313,10 +302,6 @@ export async function getWebtoons(
     webtoons = webtoons.filter((webtoon) => webtoon.sources.some((source) => source.platform === platform));
   }
 
-  const shouldHideBlGl = (!VALID_AUDIENCES.includes(audience) || audience === 'general') && !genre;
-  if (shouldHideBlGl) {
-    webtoons = webtoons.filter((webtoon) => !isBlGlWebtoon(webtoon));
-  }
   if (origin && VALID_ORIGINS.includes(origin)) {
     webtoons = webtoons.filter((webtoon) => webtoon.origin === origin);
   }
@@ -438,7 +423,6 @@ export async function searchWebtoons(query: string): Promise<WebtoonWithStats[]>
   }
 
   return [...byId.values()]
-    .filter((webtoon) => !isBlGlWebtoon(webtoon))
     .sort((a, b) => a.title.localeCompare(b.title, 'ko'))
     .slice(0, SEARCH_LIMIT);
 }

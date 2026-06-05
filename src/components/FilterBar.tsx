@@ -16,79 +16,23 @@ const STATUSES = [
   { value: 'completed', label: '완결' },
 ];
 
-const SORTS = [
-  { value: 'featured', label: '기본순' },
-  { value: 'score', label: '평점순' },
-  { value: 'popular', label: '인기순' },
-  { value: 'latest', label: '최신순' },
-];
-
 const GENRES = [
   { value: '', label: '전체' },
   { value: '로맨스', label: '로맨스' },
-  { value: '드라마', label: '드라마' },
   { value: '판타지', label: '판타지' },
   { value: '액션', label: '액션' },
   { value: '무협', label: '무협' },
-  { value: '학원', label: '학원' },
-  { value: '일상', label: '일상' },
-  { value: '개그', label: '개그' },
+  { value: '드라마', label: '드라마' },
   { value: '스릴러', label: '스릴러' },
-  { value: '공포', label: '공포' },
-  { value: '스포츠', label: '스포츠' },
 ];
-
-const AUDIENCES = [
-  { value: '', label: '일반' },
-  { value: 'all', label: 'BL·GL 포함' },
-];
-
-const ORIGINS = [
-  { value: '', label: '전체' },
-  { value: 'korea', label: '한국' },
-  { value: 'japan', label: '일본' },
-  { value: 'china', label: '중국' },
-];
-
-const INITIALS = [
-  { value: '', label: '전체' },
-  ...'ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ'.split('').map((label) => ({ value: label, label })),
-];
-
-const SIZES = [
-  { value: '10', label: '10개' },
-  { value: '20', label: '20개' },
-  { value: '50', label: '50개' },
-  { value: '100', label: '100개' },
-];
-
-function ControlGroup({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="grid grid-cols-[52px_1fr] items-center gap-2">
-      <span className="text-xs font-bold text-gray-400 dark:text-gray-500">{label}</span>
-      <div className="flex min-w-0 gap-1.5 overflow-x-auto">{children}</div>
-    </div>
-  );
-}
 
 export default function FilterBar() {
   const router = useRouter();
   const sp = useSearchParams();
 
-  const sort = sp.get('sort') ?? 'featured';
   const platform = sp.get('platform') ?? '';
   const status = sp.get('status') ?? '';
-  const initial = sp.get('initial') ?? '';
-  const size = sp.get('size') ?? '20';
   const genre = sp.get('genre') ?? '';
-  const audience = sp.get('audience') ?? '';
-  const origin = sp.get('origin') ?? '';
 
   const update = (key: string, value: string) => {
     const params = new URLSearchParams(sp.toString());
@@ -100,72 +44,44 @@ export default function FilterBar() {
   };
 
   const chip = (active: boolean) =>
-    `h-8 rounded-md border px-3 text-xs font-semibold transition-colors whitespace-nowrap ${
+    `h-8 rounded-full border px-3 text-xs font-semibold transition-colors whitespace-nowrap ${
       active
-        ? 'bg-gray-950 dark:bg-white text-white dark:text-gray-950 border-gray-950 dark:border-white'
-        : 'border-gray-200 bg-white text-gray-500 hover:border-gray-400 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-400 dark:hover:border-gray-600'
+        ? 'bg-gray-950 text-white border-gray-950 dark:bg-white dark:text-gray-950 dark:border-white'
+        : 'border-gray-200 bg-white text-gray-500 hover:border-gray-400 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-400'
     }`;
 
   return (
-    <div className="px-4">
-      <div className="space-y-2 rounded-md border border-gray-100 bg-white p-3 dark:border-gray-900 dark:bg-gray-950">
-        <ControlGroup label="정렬">
-          {SORTS.map(({ value, label }) => (
-            <button key={value} onClick={() => update('sort', value === 'featured' ? '' : value)} className={chip(sort === value || (!sp.get('sort') && value === 'featured'))}>
-              {label}
-            </button>
-          ))}
-        </ControlGroup>
-        <ControlGroup label="장르">
-          {GENRES.map(({ value, label }) => (
-            <button key={`g-${value}`} onClick={() => update('genre', value)} className={chip(genre === value)}>
-              {label}
-            </button>
-          ))}
-        </ControlGroup>
-        <ControlGroup label="플랫폼">
-          {PLATFORMS.map(({ value, label }) => (
-            <button key={`p-${value}`} onClick={() => update('platform', value)} className={chip(platform === value)}>
-              {label}
-            </button>
-          ))}
-        </ControlGroup>
-        <ControlGroup label="초성">
-          {INITIALS.map(({ value, label }) => (
-            <button key={`i-${value}`} onClick={() => update('initial', value)} className={chip(initial === value)}>
-              {label}
-            </button>
-          ))}
-        </ControlGroup>
-        <ControlGroup label="상태">
-          {STATUSES.map(({ value, label }) => (
-            <button key={`s-${value}`} onClick={() => update('status', value)} className={chip(status === value)}>
-              {label}
-            </button>
-          ))}
-        </ControlGroup>
-        <ControlGroup label="취향">
-          {AUDIENCES.map(({ value, label }) => (
-            <button key={`a-${value}`} onClick={() => update('audience', value)} className={chip(audience === value)}>
-              {label}
-            </button>
-          ))}
-        </ControlGroup>
-        <ControlGroup label="국가">
-          {ORIGINS.map(({ value, label }) => (
-            <button key={`o-${value}`} onClick={() => update('origin', value)} className={chip(origin === value)}>
-              {label}
-            </button>
-          ))}
-        </ControlGroup>
-        <ControlGroup label="보기">
-          {SIZES.map(({ value, label }) => (
-            <button key={`z-${value}`} onClick={() => update('size', value === '20' ? '' : value)} className={chip(size === value || (!sp.get('size') && value === '20'))}>
-              {label}
-            </button>
-          ))}
-        </ControlGroup>
-      </div>
+    <div className="px-4 space-y-2">
+      <FilterRow label="장르">
+        {GENRES.map(({ value, label }) => (
+          <button key={value} onClick={() => update('genre', value)} className={chip(genre === value)}>
+            {label}
+          </button>
+        ))}
+      </FilterRow>
+      <FilterRow label="플랫폼">
+        {PLATFORMS.map(({ value, label }) => (
+          <button key={value} onClick={() => update('platform', value)} className={chip(platform === value)}>
+            {label}
+          </button>
+        ))}
+      </FilterRow>
+      <FilterRow label="상태">
+        {STATUSES.map(({ value, label }) => (
+          <button key={value} onClick={() => update('status', value)} className={chip(status === value)}>
+            {label}
+          </button>
+        ))}
+      </FilterRow>
+    </div>
+  );
+}
+
+function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-11 shrink-0 text-[11px] font-bold text-gray-400 dark:text-gray-500">{label}</span>
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar">{children}</div>
     </div>
   );
 }

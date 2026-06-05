@@ -14,11 +14,11 @@ import SortChips from '@/components/SortChips';
 import { createClient } from '@/lib/supabase/server';
 
 interface Props {
-  searchParams: Promise<{ sort?: string; platform?: string; status?: string; page?: string; size?: string; initial?: string; genre?: string; audience?: string; origin?: string }>;
+  searchParams: Promise<{ sort?: string; platform?: string; status?: string; page?: string; size?: string; initial?: string; genre?: string }>;
 }
 
 export default async function Home({ searchParams }: Props) {
-  const { sort, platform, status, page, size, initial, genre, audience, origin } = await searchParams;
+  const { sort, platform, status, page, size, initial, genre } = await searchParams;
   const supabase = await createClient();
   const sortOption = (['featured', 'score', 'popular', 'weekly_score', 'weekly_comments', 'monthly_score', 'monthly_popular', 'yearly_score', 'yearly_popular', 'latest'].includes(sort ?? '') ? sort : 'featured') as SortOption;
   const currentPage = Math.max(Number(page ?? '1') || 1, 1);
@@ -30,9 +30,9 @@ export default async function Home({ searchParams }: Props) {
     noticeResult,
     bannerResult,
   ] = await Promise.all([
-    getWebtoons(sortOption, platform, status, currentPage, pageSize, initial, genre, audience, origin),
-    getWebtoons('weekly_score', platform, status, 1, 20, initial, genre, audience, origin),
-    getWebtoons('weekly_comments', platform, status, 1, 20, initial, genre, audience, origin),
+    getWebtoons(sortOption, platform, status, currentPage, pageSize, initial, genre),
+    getWebtoons('weekly_score', platform, status, 1, 20, initial, genre),
+    getWebtoons('weekly_comments', platform, status, 1, 20, initial, genre),
     supabase.from('site_settings').select('value').eq('key', 'top_notice').maybeSingle(),
     supabase.from('site_settings').select('key, value').in('key', ['banner_image_url', 'banner_link_url', 'banner_alt_text']),
   ]);
@@ -51,7 +51,6 @@ export default async function Home({ searchParams }: Props) {
     platform === 'etc' ? '기타' :
     null;
   const statusLabel = status === 'ongoing' ? '연재중' : status === 'completed' ? '완결' : null;
-  const originLabel = origin === 'korea' ? '한국' : origin === 'japan' ? '일본' : origin === 'china' ? '중국' : null;
   const weeklyScoreItems = weeklyScoreWebtoons.filter((webtoon) => webtoon.weekly_review_count > 0).slice(0, 3);
   const weeklyCommentItems = weeklyCommentWebtoons.filter((webtoon) => webtoon.weekly_comment_count > 0).slice(0, 3);
   const pageHref = (nextPage: number) => {
@@ -61,8 +60,6 @@ export default async function Home({ searchParams }: Props) {
     if (status) params.set('status', status);
     if (initial) params.set('initial', initial);
     if (genre) params.set('genre', genre);
-    if (audience) params.set('audience', audience);
-    if (origin) params.set('origin', origin);
     if (limit !== 20) params.set('size', String(limit));
     if (nextPage > 1) params.set('page', String(nextPage));
     const query = params.toString();
@@ -131,7 +128,7 @@ export default async function Home({ searchParams }: Props) {
       <div className="px-4 pb-2">
         <div className="flex items-center justify-between border-y border-gray-100 py-2 dark:border-gray-900">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {[platformLabel, originLabel, genre, initial, statusLabel, audience === 'all' ? 'BL·GL 포함' : null].filter(Boolean).join(' · ') || '전체 웹툰'}
+            {[platformLabel, genre, statusLabel].filter(Boolean).join(' · ') || '전체 웹툰'}
           </p>
           <p className="text-xs font-bold text-gray-800 dark:text-gray-100">
             {total.toLocaleString()}개 중 {webtoons.length.toLocaleString()}개

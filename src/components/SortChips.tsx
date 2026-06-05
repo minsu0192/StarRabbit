@@ -11,7 +11,6 @@ const GROUPS: { label: string; options: { value: SortOption; label: string }[] }
       { value: 'featured', label: '기본순' },
       { value: 'score', label: '평점순' },
       { value: 'popular', label: '인기순' },
-      { value: 'latest', label: '최신순' },
     ],
   },
   {

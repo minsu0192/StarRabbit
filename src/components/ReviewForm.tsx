@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ReviewWithProfile } from '@/types';
 
@@ -33,6 +33,22 @@ export default function ReviewForm({ webtoonId, existingReview }: Props) {
   const [isPending, startTransition] = useTransition();
   const [isEditing, setIsEditing] = useState(!existingReview);
   const [score, setScore] = useState(existingReview?.score ?? 7.0);
+  const sliderRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const el = sliderRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.5 : -0.5;
+      setScore((prev) => {
+        const next = Math.round((prev + delta) * 2) / 2;
+        return Math.max(1, Math.min(10, next));
+      });
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
   const [comment, setComment] = useState(existingReview?.comment ?? '');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -116,6 +132,7 @@ export default function ReviewForm({ webtoonId, existingReview }: Props) {
           </span>
         </div>
         <input
+          ref={sliderRef}
           type="range"
           min={1}
           max={10}
