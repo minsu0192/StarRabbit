@@ -26,6 +26,8 @@ const GENRES = [
   { value: '스릴러', label: '스릴러' },
 ];
 
+const INITIALS = ['ㄱ','ㄴ','ㄷ','ㄹ','ㅁ','ㅂ','ㅅ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+
 export default function FilterBar() {
   const router = useRouter();
   const sp = useSearchParams();
@@ -33,6 +35,7 @@ export default function FilterBar() {
   const platform = sp.get('platform') ?? '';
   const status = sp.get('status') ?? '';
   const genre = sp.get('genre') ?? '';
+  const initial = sp.get('initial') ?? '';
 
   const update = (key: string, value: string) => {
     const params = new URLSearchParams(sp.toString());
@@ -52,6 +55,12 @@ export default function FilterBar() {
 
   return (
     <div className="px-4 space-y-2">
+      <FilterRow label="초성">
+        <button onClick={() => update('initial', '')} className={chip(initial === '')}>전체</button>
+        {INITIALS.map((v) => (
+          <button key={v} onClick={() => update('initial', v)} className={chip(initial === v)}>{v}</button>
+        ))}
+      </FilterRow>
       <FilterRow label="장르">
         {GENRES.map(({ value, label }) => (
           <button key={value} onClick={() => update('genre', value)} className={chip(genre === value)}>

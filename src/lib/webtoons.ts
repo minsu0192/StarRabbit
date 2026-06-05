@@ -347,10 +347,14 @@ export async function getReviewsByWebtoon(webtoonId: string): Promise<ReviewWith
 
   if (error || !data) return [];
 
-  return (data as ReviewRowData[]).map((review) => ({
-    ...review,
-    score: Number(review.score),
-  }));
+  return (data as ReviewRowData[])
+    .map((review) => ({ ...review, score: Number(review.score) }))
+    .sort((a, b) => {
+      // 댓글 있으면 추천수 3개 보너스 — 댓글 없는 건 추천이 많아야 위로 올라옴
+      const aW = (a.recommend_count ?? 0) + (String(a.comment ?? '').trim() ? 3 : 0);
+      const bW = (b.recommend_count ?? 0) + (String(b.comment ?? '').trim() ? 3 : 0);
+      return bW - aW || (new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    });
 }
 
 export async function getUserReview(webtoonId: string, userId: string): Promise<ReviewWithProfile | null> {
