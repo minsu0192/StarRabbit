@@ -49,7 +49,7 @@ export default function NicknameForm({ currentNickname }: { currentNickname: str
       {msg && (
         <p className={`text-xs ${isSuccess ? 'text-green-500' : 'text-red-400'}`}>{msg}</p>
       )}
-      <p className="text-[11px] text-gray-400">{value.length}/12</p>
+      <p className="text-[11px] text-gray-400">{value.length}/12 · 닉네임은 10일에 한 번만 변경할 수 있어요</p>
     </div>
   );
 }

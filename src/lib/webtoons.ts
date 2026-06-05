@@ -8,7 +8,7 @@ const VALID_GENRES = ['로맨스', '드라마', '판타지', '액션', '무협',
 const DEFAULT_LIST_LIMIT = 20;
 const VALID_LIST_LIMITS = [10, 20, 50, 100];
 const SEARCH_LIMIT = 80;
-const LIST_CANDIDATE_LIMIT = 1000;
+const LIST_CANDIDATE_LIMIT = 7000;
 const INITIAL_RANGES: Record<string, [string, string | null]> = {
   'ㄱ': ['가', '나'],
   'ㄴ': ['나', '다'],
@@ -247,14 +247,15 @@ export async function getWebtoons(
     webtoons = webtoons.filter((webtoon) => webtoon.sources.some((source) => source.platform === platform));
   }
 
-  if (!VALID_AUDIENCES.includes(audience) || audience === 'general') {
+  const shouldHideBlGl = (!VALID_AUDIENCES.includes(audience) || audience === 'general') && !genre;
+  if (shouldHideBlGl) {
     webtoons = webtoons.filter((webtoon) => !isBlGlWebtoon(webtoon));
   }
 
   const sorted = sortWebtoons(webtoons, sort);
   const pageItems = needsClientSort ? sorted.slice(from, to + 1) : sorted;
 
-  return { items: pageItems, total: audience === 'all' ? total : sorted.length, page: safePage, limit: safeLimit };
+  return { items: pageItems, total, page: safePage, limit: safeLimit };
 }
 
 export async function getWebtoon(id: string): Promise<WebtoonWithStats | null> {

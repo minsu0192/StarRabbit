@@ -1,0 +1,109 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
+import { isAdminEmail } from '@/lib/admin';
+
+async function requireAdmin() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!isAdminEmail(user?.email)) throw new Error('관리자 권한이 없습니다');
+  if (!user) throw new Error('로그인이 필요합니다');
+  return user;
+}
+
+function nonEmpty(value: FormDataEntryValue | null) {
+  return String(value ?? '').trim();
+}
+
+export async function updateTopNotice(formData: FormData) {
+  const user = await requireAdmin();
+  const service = createServiceClient();
+  const notice = nonEmpty(formData.get('notice')).slice(0, 120);
+
+  const { error } = await service
+    .from('site_settings')
+    .upsert({
+      key: 'top_notice',
+      value: notice,
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+    });
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/');
+  revalidatePath('/admin');
+}
+
+export async function deleteReviewAsAdmin(formData: FormData) {
+  await requireAdmin();
+  const service = createServiceClient();
+  const reviewId = nonEmpty(formData.get('reviewId'));
+  if (!reviewId) throw new Error('삭제할 게시물이 없습니다');
+
+  const { error } = await service
+    .from('reviews')
+    .delete()
+    .eq('id', reviewId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/admin');
+}
+
+export async function suspendUserAsAdmin(formData: FormData) {
+  await requireAdmin();
+  const service = createServiceClient();
+  const userId = nonEmpty(formData.get('userId'));
+  const reason = nonEmpty(formData.get('reason')) || '운영 정책 위반';
+  if (!userId) throw new Error('정지할 유저가 없습니다');
+
+  const { error } = await service
+    .from('profiles')
+    .update({
+      is_suspended: true,
+      suspended_at: new Date().toISOString(),
+      suspension_reason: reason.slice(0, 120),
+    })
+    .eq('id', userId);
+  if (error) throw new Error(error.message);
+
+  await service.auth.admin.updateUserById(userId, { ban_duration: '876000h' }).catch(() => null);
+  revalidatePath('/admin');
+}
+
+export async function createCheerEvent(formData: FormData) {
+  await requireAdmin();
+  const service = createServiceClient();
+  const title = nonEmpty(formData.get('title'));
+  const startsAt = nonEmpty(formData.get('startsAt'));
+  const endsAt = nonEmpty(formData.get('endsAt'));
+  const webtoonIds = nonEmpty(formData.get('webtoonIds'))
+    .split(/[,\n]/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+  if (!title || !startsAt || !endsAt || webtoonIds.length < 2) {
+    throw new Error('제목, 시작/종료일, 최소 2개 작품 ID가 필요합니다');
+  }
+
+  const { data: event, error } = await service
+    .from('cheer_events')
+    .insert({
+      title,
+      status: 'scheduled',
+      starts_at: new Date(startsAt).toISOString(),
+      ends_at: new Date(endsAt).toISOString(),
+    })
+    .select('id')
+    .single();
+  if (error) throw new Error(error.message);
+
+  const { error: entryError } = await service
+    .from('cheer_event_entries')
+    .insert(webtoonIds.map((webtoonId) => ({ event_id: event.id, webtoon_id: webtoonId })));
+  if (entryError) throw new Error(entryError.message);
+
+  revalidatePath('/admin');
+  revalidatePath('/cheer');
+}

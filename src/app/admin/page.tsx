@@ -2,9 +2,15 @@ export const runtime = 'edge';
 
 import { redirect } from 'next/navigation';
 import Header from '@/components/Header';
+import { isAdminEmail } from '@/lib/admin';
 import { createClient } from '@/lib/supabase/server';
-
-const ADMIN_EMAILS = new Set(['minsu0192@gmail.com']);
+import { createServiceClient } from '@/lib/supabase/service';
+import {
+  createCheerEvent,
+  deleteReviewAsAdmin,
+  suspendUserAsAdmin,
+  updateTopNotice,
+} from './actions';
 
 const ADMIN_TASKS = [
   {
@@ -29,12 +35,49 @@ const ADMIN_TASKS = [
   },
 ];
 
+type AdminProfileRow = {
+  id: string;
+  nickname: string;
+  total_recommends?: number | null;
+  is_suspended?: boolean | null;
+  suspension_reason?: string | null;
+  suspended_at?: string | null;
+};
+
 export default async function AdminPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const email = user?.email?.toLowerCase() ?? '';
 
-  if (!ADMIN_EMAILS.has(email)) redirect('/');
+  if (!isAdminEmail(email)) redirect('/');
+
+  const service = createServiceClient();
+  const reviewsResult = await service
+    .from('reviews')
+    .select('id, user_id, score, comment, created_at, profiles(nickname), webtoons(title)')
+    .order('created_at', { ascending: false })
+    .limit(12);
+  const profilesResult = await service
+    .from('profiles')
+    .select('id, nickname, is_suspended, suspension_reason, suspended_at, total_recommends')
+    .order('created_at', { ascending: false })
+    .limit(12);
+  let profiles: AdminProfileRow[] = profilesResult.data ?? [];
+  if (profilesResult.error) {
+    const fallbackProfilesResult = await service
+      .from('profiles')
+      .select('id, nickname, total_recommends')
+      .order('created_at', { ascending: false })
+      .limit(12);
+    profiles = fallbackProfilesResult.data ?? [];
+  }
+  const noticeResult = await service
+    .from('site_settings')
+    .select('value')
+    .eq('key', 'top_notice')
+    .maybeSingle();
+  const reviews = reviewsResult.data ?? [];
+  const notice = noticeResult.data ?? null;
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col">
@@ -48,7 +91,78 @@ export default async function AdminPage() {
         </p>
       </section>
 
-      <main className="flex-1 px-4 py-4">
+      <main className="flex-1 space-y-4 px-4 py-4">
+        <section className="rounded-md border border-gray-100 p-3 dark:border-gray-900">
+          <h2 className="mb-3 text-sm font-bold">상단 공지글</h2>
+          <form action={updateTopNotice} className="space-y-2">
+            <textarea
+              name="notice"
+              defaultValue={notice?.value ?? ''}
+              maxLength={120}
+              rows={3}
+              placeholder="홈 상단에 보여줄 공지"
+              className="w-full rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-gray-800"
+            />
+            <button className="rounded-md bg-gray-950 px-3 py-2 text-xs font-bold text-white dark:bg-white dark:text-gray-950">
+              공지 저장
+            </button>
+          </form>
+        </section>
+
+        <section className="rounded-md border border-gray-100 p-3 dark:border-gray-900">
+          <h2 className="mb-3 text-sm font-bold">응원전 생성</h2>
+          <form action={createCheerEvent} className="grid gap-2">
+            <input name="title" placeholder="예: 화산귀환 vs 전독시" className="rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-gray-800" />
+            <div className="grid grid-cols-2 gap-2">
+              <input name="startsAt" type="datetime-local" className="rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-gray-800" />
+              <input name="endsAt" type="datetime-local" className="rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-gray-800" />
+            </div>
+            <textarea name="webtoonIds" rows={2} placeholder="붙일 작품 webtoon_id를 줄바꿈 또는 쉼표로 입력" className="rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-gray-800" />
+            <button className="rounded-md bg-gray-950 px-3 py-2 text-xs font-bold text-white dark:bg-white dark:text-gray-950">
+              응원전 만들기
+            </button>
+          </form>
+        </section>
+
+        <section className="rounded-md border border-gray-100 p-3 dark:border-gray-900">
+          <h2 className="mb-3 text-sm font-bold">최근 게시물 삭제</h2>
+          <div className="divide-y divide-gray-100 dark:divide-gray-900">
+            {reviews.map((review) => (
+              <form key={review.id} action={deleteReviewAsAdmin} className="grid grid-cols-[1fr_auto] gap-3 py-2">
+                <input type="hidden" name="reviewId" value={review.id} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold">{(review.webtoons as { title?: string } | null)?.title ?? '알 수 없음'}</p>
+                  <p className="truncate text-xs text-gray-400">{(review.profiles as { nickname?: string } | null)?.nickname ?? '익명'} · {review.comment || '별점만'}</p>
+                </div>
+                <button className="rounded-md border border-red-200 px-2 py-1 text-xs font-bold text-red-500">
+                  삭제
+                </button>
+              </form>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-md border border-gray-100 p-3 dark:border-gray-900">
+          <h2 className="mb-3 text-sm font-bold">유저 정지</h2>
+          <div className="divide-y divide-gray-100 dark:divide-gray-900">
+            {profiles.map((profile) => (
+              <form key={profile.id} action={suspendUserAsAdmin} className="grid gap-2 py-2">
+                <input type="hidden" name="userId" value={profile.id} />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold">{profile.nickname}</p>
+                    <p className="truncate text-xs text-gray-400">{'is_suspended' in profile && profile.is_suspended ? `정지됨 · ${profile.suspension_reason ?? ''}` : '활동 가능'}</p>
+                  </div>
+                  <button className="rounded-md border border-red-200 px-2 py-1 text-xs font-bold text-red-500">
+                    정지
+                  </button>
+                </div>
+                <input name="reason" placeholder="정지 사유" className="rounded-md border border-gray-200 bg-transparent px-3 py-2 text-xs outline-none focus:border-amber-400 dark:border-gray-800" />
+              </form>
+            ))}
+          </div>
+        </section>
+
         <div className="divide-y divide-gray-100 rounded-md border border-gray-100 dark:divide-gray-900 dark:border-gray-900">
           {ADMIN_TASKS.map((task) => (
             <div key={task.title} className="px-3 py-3">

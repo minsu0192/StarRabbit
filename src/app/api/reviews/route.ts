@@ -22,6 +22,12 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) return errorResponse('로그인이 필요합니다', 401);
+  const { data: profileState } = await supabase
+    .from('profiles')
+    .select('is_suspended')
+    .eq('id', user.id)
+    .single();
+  if (profileState?.is_suspended) return errorResponse('정지된 계정은 평점을 남길 수 없습니다', 403);
 
   const body = await request.json().catch(() => null);
   const webtoonId = String(body?.webtoonId ?? '');

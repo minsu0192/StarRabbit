@@ -1,9 +1,8 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { isAdminEmail } from '@/lib/admin';
 import BunnyMascot from './BunnyMascot';
 import LoginButton from './LoginButton';
-
-const ADMIN_EMAILS = new Set(['minsu0192@gmail.com']);
 
 export default async function Header() {
   const supabase = await createClient();
@@ -23,7 +22,7 @@ export default async function Header() {
   const userInfo = user
     ? { name: nickname, avatarUrl: user.user_metadata?.avatar_url ?? null }
     : null;
-  const isAdmin = user?.email ? ADMIN_EMAILS.has(user.email.toLowerCase()) : false;
+  const isAdmin = isAdminEmail(user?.email);
 
   return (
     <header className="sticky top-0 z-10 border-b border-gray-100 bg-[var(--background)]/90 px-4 py-3 backdrop-blur dark:border-gray-900">

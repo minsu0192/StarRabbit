@@ -9,6 +9,7 @@ import SearchBar from '@/components/SearchBar';
 import FilterBar from '@/components/FilterBar';
 import BunnyMascot from '@/components/BunnyMascot';
 import Header from '@/components/Header';
+import { createClient } from '@/lib/supabase/server';
 
 interface Props {
   searchParams: Promise<{ sort?: string; platform?: string; status?: string; page?: string; size?: string; initial?: string; genre?: string; audience?: string }>;
@@ -16,6 +17,7 @@ interface Props {
 
 export default async function Home({ searchParams }: Props) {
   const { sort, platform, status, page, size, initial, genre, audience } = await searchParams;
+  const supabase = await createClient();
   const sortOption = (['featured', 'score', 'popular', 'weekly_score', 'weekly_comments', 'latest'].includes(sort ?? '') ? sort : 'featured') as SortOption;
   const currentPage = Math.max(Number(page ?? '1') || 1, 1);
   const pageSize = Number(size ?? '20') || 20;
@@ -23,11 +25,14 @@ export default async function Home({ searchParams }: Props) {
     { items: webtoons, total, limit },
     { items: weeklyScoreWebtoons },
     { items: weeklyCommentWebtoons },
+    noticeResult,
   ] = await Promise.all([
     getWebtoons(sortOption, platform, status, currentPage, pageSize, initial, genre, audience),
     getWebtoons('weekly_score', platform, status, 1, 10, initial, genre, audience),
     getWebtoons('weekly_comments', platform, status, 1, 10, initial, genre, audience),
+    supabase.from('site_settings').select('value').eq('key', 'top_notice').maybeSingle(),
   ]);
+  const topNotice = noticeResult.error ? null : noticeResult.data?.value?.trim();
   const totalPages = Math.max(Math.ceil(total / limit), 1);
   const clampedPage = Math.min(currentPage, totalPages);
 
@@ -55,6 +60,12 @@ export default async function Home({ searchParams }: Props) {
   return (
     <div className="flex flex-col min-h-screen max-w-2xl mx-auto w-full">
       <Header />
+
+      {topNotice && (
+        <div className="border-b border-amber-100 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 dark:border-amber-950 dark:bg-amber-950/30 dark:text-amber-300">
+          {topNotice}
+        </div>
+      )}
 
       <section className="px-4 pb-4 pt-5">
         <div className="flex items-center justify-between gap-4">
