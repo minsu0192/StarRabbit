@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient, hasServiceRoleConfig } from '@/lib/supabase/service';
 import { isAdminEmail } from '@/lib/admin';
@@ -109,7 +110,7 @@ export async function createCheerEvent(formData: FormData) {
     .filter(Boolean);
 
   if (!title || !startsAt || !endsAt || webtoonIds.length < 2) {
-    throw new Error('제목, 시작/종료일, 최소 2개 작품 ID가 필요합니다');
+    redirect('/admin?msg=' + encodeURIComponent('제목, 시작/종료일, 최소 2개 작품이 필요합니다'));
   }
 
   const { data: event, error } = await service
@@ -122,13 +123,23 @@ export async function createCheerEvent(formData: FormData) {
     })
     .select('id')
     .single();
-  if (error) throw new Error(error.message);
+
+  if (error) {
+    const hint = error.message.includes('does not exist')
+      ? 'cheer_events 테이블이 없습니다. Supabase에서 add-cheer-points.sql을 실행하세요.'
+      : error.message;
+    redirect('/admin?msg=' + encodeURIComponent(hint));
+  }
 
   const { error: entryError } = await service
     .from('cheer_event_entries')
-    .insert(webtoonIds.map((webtoonId) => ({ event_id: event.id, webtoon_id: webtoonId })));
-  if (entryError) throw new Error(entryError.message);
+    .insert(webtoonIds.map((webtoonId) => ({ event_id: event!.id, webtoon_id: webtoonId })));
+
+  if (entryError) {
+    redirect('/admin?msg=' + encodeURIComponent(entryError.message));
+  }
 
   revalidatePath('/admin');
   revalidatePath('/cheer');
+  redirect('/admin?msg=' + encodeURIComponent(`응원전 "${title}" 생성 완료!`));
 }

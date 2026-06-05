@@ -6,6 +6,7 @@ import { isAdminEmail } from '@/lib/admin';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient, hasServiceRoleConfig } from '@/lib/supabase/service';
 import WebtoonSearchPicker from '@/components/WebtoonSearchPicker';
+import ScoreBadge from '@/components/ScoreBadge';
 import {
   createCheerEvent,
   deleteReviewAsAdmin,
@@ -46,7 +47,12 @@ type AdminProfileRow = {
   suspended_at?: string | null;
 };
 
-export default async function AdminPage() {
+interface AdminProps {
+  searchParams: Promise<{ msg?: string }>;
+}
+
+export default async function AdminPage({ searchParams }: AdminProps) {
+  const { msg } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const email = user?.email?.toLowerCase() ?? '';
@@ -129,6 +135,11 @@ export default async function AdminPage() {
       </section>
 
       <main className="flex-1 space-y-4 px-4 py-4">
+        {msg && (
+          <div className={`rounded-md border px-3 py-2 text-sm font-semibold ${msg.includes('완료') ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300' : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300'}`}>
+            {msg}
+          </div>
+        )}
         {!serviceConfigured && (
           <section className="rounded-md border border-red-100 bg-red-50 p-3 text-sm text-red-700 dark:border-red-950 dark:bg-red-950/30 dark:text-red-300">
             배포 환경에 <code>SUPABASE_SERVICE_ROLE_KEY</code>가 없어 관리자 실행 기능이 비활성화되어 있습니다.
@@ -172,13 +183,16 @@ export default async function AdminPage() {
             <h2 className="mb-3 text-sm font-bold text-red-600 dark:text-red-400">신고된 게시물 ({reportedReviews.length})</h2>
             <div className="divide-y divide-gray-100 dark:divide-gray-900">
               {reportedReviews.map((review) => (
-                <form key={review.id} action={deleteReviewAsAdmin} className="grid grid-cols-[1fr_auto] gap-3 py-2">
+                <form key={review.id} action={deleteReviewAsAdmin} className="grid grid-cols-[1fr_auto] items-start gap-3 py-2">
                   <input type="hidden" name="reviewId" value={review.id} />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-bold">{review.webtoons?.title ?? '알 수 없음'}</p>
-                    <p className="truncate text-xs text-gray-400">{review.profiles?.nickname ?? '익명'} · {review.comment || '별점만'}</p>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <ScoreBadge score={typeof review.score === 'number' ? review.score : Number(review.score ?? 0)} size="sm" />
+                      <p className="truncate text-sm font-bold">{review.webtoons?.title ?? '알 수 없음'}</p>
+                    </div>
+                    <p className="truncate text-xs text-gray-400">{review.profiles?.nickname ?? '익명'} · {review.comment || '한줄평 없음'}</p>
                   </div>
-                  <button className="rounded-md border border-red-200 px-2 py-1 text-xs font-bold text-red-500">
+                  <button className="mt-1 shrink-0 rounded-md border border-red-200 px-2 py-1 text-xs font-bold text-red-500">
                     삭제
                   </button>
                 </form>
@@ -188,16 +202,22 @@ export default async function AdminPage() {
         )}
 
         <section className="rounded-md border border-gray-100 p-3 dark:border-gray-900">
-          <h2 className="mb-3 text-sm font-bold">최근 게시물 삭제</h2>
+          <h2 className="mb-1 text-sm font-bold">최근 한줄평 관리</h2>
+          <p className="mb-3 text-xs text-gray-400">욕설·도배·허위 평점 등 문제 있는 게시물만 삭제하세요.</p>
           <div className="divide-y divide-gray-100 dark:divide-gray-900">
             {reviews.map((review) => (
-              <form key={review.id} action={deleteReviewAsAdmin} className="grid grid-cols-[1fr_auto] gap-3 py-2">
+              <form key={review.id} action={deleteReviewAsAdmin} className="grid grid-cols-[1fr_auto] items-start gap-3 py-2">
                 <input type="hidden" name="reviewId" value={review.id} />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold">{review.webtoons?.title ?? '알 수 없음'}</p>
-                  <p className="truncate text-xs text-gray-400">{review.profiles?.nickname ?? '익명'} · {review.comment || '별점만'}</p>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <ScoreBadge score={typeof review.score === 'number' ? review.score : Number(review.score ?? 0)} size="sm" />
+                    <p className="truncate text-sm font-bold">{review.webtoons?.title ?? '알 수 없음'}</p>
+                  </div>
+                  <p className="truncate text-xs text-gray-400">
+                    {review.profiles?.nickname ?? '익명'} · {review.comment || '한줄평 없음'} · {review.created_at?.slice(0,10) ?? ''}
+                  </p>
                 </div>
-                <button className="rounded-md border border-red-200 px-2 py-1 text-xs font-bold text-red-500">
+                <button className="mt-1 shrink-0 rounded-md border border-red-200 px-2 py-1 text-xs font-bold text-red-500">
                   삭제
                 </button>
               </form>
@@ -245,7 +265,8 @@ export default async function AdminPage() {
 
         <section className="rounded-md border border-gray-100 p-3 dark:border-gray-900">
           <h2 className="mb-1 text-sm font-bold">배너 광고</h2>
-          <p className="mb-3 text-xs text-gray-400">홈 상단에 광고 배너를 표시합니다. 이미지 URL이 비어있으면 배너가 숨겨집니다.</p>
+          <p className="mb-1 text-xs text-gray-400">홈 상단에 광고 배너를 표시합니다. 이미지 URL이 비어있으면 배너가 숨겨집니다.</p>
+          <p className="mb-3 text-xs text-amber-600 dark:text-amber-400 font-semibold">권장 이미지 크기: 가로 750px × 세로 150px (5:1 비율, 최대 80px 높이로 표시)</p>
           <form action={updateBannerAd} className="space-y-2">
             <input name="imageUrl" defaultValue={bannerImageUrl} placeholder="이미지 URL (예: https://cdn.example.com/banner.png)" className="w-full rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-gray-800" />
             <input name="linkUrl" defaultValue={bannerLinkUrl} placeholder="클릭 시 이동 URL" className="w-full rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-gray-800" />

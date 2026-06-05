@@ -36,6 +36,7 @@ export default function FilterBar() {
   const status = sp.get('status') ?? '';
   const genre = sp.get('genre') ?? '';
   const initial = sp.get('initial') ?? '';
+  const size = sp.get('size') ?? '20';
 
   const update = (key: string, value: string) => {
     const params = new URLSearchParams(sp.toString());
@@ -55,6 +56,13 @@ export default function FilterBar() {
 
   return (
     <div className="px-4 space-y-2">
+      <FilterRow label="개수">
+        {[10, 20, 50, 100].map((n) => (
+          <button key={n} onClick={() => update('size', n === 20 ? '' : String(n))} className={chip(size === String(n) || (size === '20' && n === 20))}>
+            {n}개
+          </button>
+        ))}
+      </FilterRow>
       <FilterRow label="초성">
         <button onClick={() => update('initial', '')} className={chip(initial === '')}>전체</button>
         {INITIALS.map((v) => (
