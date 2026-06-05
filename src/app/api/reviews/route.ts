@@ -2,6 +2,7 @@ export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { awardReviewPoints } from '@/lib/points';
 
 function normalizeScore(score: unknown) {
   const value = Number(score);
@@ -39,12 +40,23 @@ export async function POST(request: NextRequest) {
   if (comment.length === 1) return errorResponse('한줄평은 비우거나 2자 이상 입력해주세요');
   if (comment.length > 200) return errorResponse('한줄평은 200자 이하여야 합니다');
 
+  const { data: existingReview } = await supabase
+    .from('reviews')
+    .select('comment')
+    .eq('webtoon_id', webtoonId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
   const { error } = await supabase.from('reviews').upsert(
     { webtoon_id: webtoonId, user_id: user.id, score: safeScore, comment },
     { onConflict: 'webtoon_id,user_id' },
   );
 
-  return error ? errorResponse(error.message, 500) : NextResponse.json({ ok: true });
+  if (error) return errorResponse(error.message, 500);
+
+  await awardReviewPoints(supabase, user.id, existingReview?.comment, comment);
+
+  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(request: NextRequest) {

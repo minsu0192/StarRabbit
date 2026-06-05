@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { containsProfanity, containsPromoLink } from '@/lib/filter';
+import { awardReviewPoints } from '@/lib/points';
 
 function normalizeScore(score: number) {
   if (!Number.isFinite(score)) return null;
@@ -34,12 +35,23 @@ export async function createOrUpdateReview(
   if (trimmed && containsProfanity(trimmed)) return { error: '금지된 표현이 포함되어 있습니다' };
   if (trimmed && containsPromoLink(trimmed)) return { error: '외부 링크나 홍보성 내용은 작성할 수 없습니다' };
 
+  const { data: existingReview } = await supabase
+    .from('reviews')
+    .select('comment')
+    .eq('webtoon_id', webtoonId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
   const { error } = await supabase.from('reviews').upsert(
     { webtoon_id: webtoonId, user_id: user.id, score: safeScore, comment: trimmed },
     { onConflict: 'webtoon_id,user_id' }
   );
 
-  return error ? { error: error.message } : {};
+  if (error) return { error: error.message };
+
+  await awardReviewPoints(supabase, user.id, existingReview?.comment, trimmed);
+
+  return {};
 }
 
 export async function deleteReview(

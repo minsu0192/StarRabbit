@@ -1,3 +1,7 @@
+import type { createClient } from '@/lib/supabase/server';
+
+type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
 export const POINT_RULES = [
   { label: '별점만 남기기', points: 5, description: '작품당 최초 1회' },
   { label: '별점과 한줄평 남기기', points: 15, description: '작품당 최초 1회, 별점만 남긴 뒤 한줄평을 추가하면 차액 10점' },
@@ -32,4 +36,32 @@ export function getPointLevel(points: number) {
     remaining: next ? next.min - safePoints : null,
     progress: next ? Math.round(((safePoints - current.min) / (next.min - current.min)) * 100) : 100,
   };
+}
+
+export function reviewPointValue(comment: string | null | undefined) {
+  return String(comment ?? '').trim() ? 15 : 5;
+}
+
+export async function awardReviewPoints(
+  supabase: ServerSupabaseClient,
+  userId: string,
+  previousComment: string | null | undefined,
+  nextComment: string,
+) {
+  const previousPoints = previousComment === undefined ? 0 : reviewPointValue(previousComment);
+  const nextPoints = reviewPointValue(nextComment);
+  const delta = Math.max(nextPoints - previousPoints, 0);
+  if (delta <= 0) return;
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('points')
+    .eq('id', userId)
+    .single();
+
+  const currentPoints = Number(data?.points ?? 0);
+  await supabase
+    .from('profiles')
+    .update({ points: currentPoints + delta })
+    .eq('id', userId);
 }
