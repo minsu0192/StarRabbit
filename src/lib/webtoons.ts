@@ -9,7 +9,7 @@ const DEFAULT_LIST_LIMIT = 20;
 const VALID_LIST_LIMITS = [10, 20, 50, 100];
 const SEARCH_LIMIT = 80;
 const LIST_CANDIDATE_LIMIT = 7000;
-const VALID_SORTS: SortOption[] = ['featured', 'score', 'popular', 'weekly_score', 'weekly_comments', 'monthly_score', 'monthly_popular', 'yearly_score', 'yearly_popular', 'latest'];
+const VALID_SORTS: SortOption[] = ['featured', 'score', 'popular', 'daily_score', 'daily_popular', 'weekly_score', 'weekly_comments', 'monthly_score', 'monthly_popular', 'yearly_score', 'yearly_popular', 'latest'];
 const INITIAL_RANGES: Record<string, [string, string | null]> = {
   'ㄱ': ['가', '나'],
   'ㄴ': ['나', '다'],
@@ -40,9 +40,14 @@ function withStats(webtoon: WebtoonRowData): WebtoonWithStats {
   const one_score_count = scores.filter((score) => score === 1).length;
   const ten_score_count = scores.filter((score) => score === 10).length;
   const now = Date.now();
+  const dayStart = now - 24 * 60 * 60 * 1000;
   const weekStart = now - 7 * 24 * 60 * 60 * 1000;
   const monthStart = now - 30 * 24 * 60 * 60 * 1000;
   const yearStart = now - 365 * 24 * 60 * 60 * 1000;
+
+  const dailyScores = (webtoon.reviews ?? [])
+    .filter((r) => r.created_at && new Date(r.created_at).getTime() >= dayStart)
+    .map((r) => Number(r.score));
 
   const weeklyScores = (webtoon.reviews ?? [])
     .filter((r) => r.created_at && new Date(r.created_at).getTime() >= weekStart)
@@ -59,6 +64,9 @@ function withStats(webtoon: WebtoonRowData): WebtoonWithStats {
     .map((r) => Number(r.score));
   const avg_score = scores.length > 0
     ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
+    : null;
+  const daily_avg_score = dailyScores.length > 0
+    ? Math.round((dailyScores.reduce((a, b) => a + b, 0) / dailyScores.length) * 10) / 10
     : null;
   const weekly_avg_score = weeklyScores.length > 0
     ? Math.round((weeklyScores.reduce((a, b) => a + b, 0) / weeklyScores.length) * 10) / 10
@@ -91,6 +99,8 @@ function withStats(webtoon: WebtoonRowData): WebtoonWithStats {
     ...rest,
     avg_score,
     review_count: scores.length,
+    daily_avg_score,
+    daily_review_count: dailyScores.length,
     weekly_avg_score,
     weekly_review_count: weeklyScores.length,
     weekly_comment_count,
@@ -168,6 +178,14 @@ function sortWebtoons(items: WebtoonWithStats[], sort: SortOption) {
     // 인기순: 리뷰 많은 순 (점수 무관)
     if (sort === 'popular') {
       return b.review_count - a.review_count || (b.avg_score ?? -1) - (a.avg_score ?? -1) || byTitle(a, b);
+    }
+    if (sort === 'daily_score') {
+      const hasA = a.daily_avg_score !== null ? 1 : 0;
+      const hasB = b.daily_avg_score !== null ? 1 : 0;
+      return hasB - hasA || (b.daily_avg_score ?? 0) - (a.daily_avg_score ?? 0) || b.daily_review_count - a.daily_review_count || byTitle(a, b);
+    }
+    if (sort === 'daily_popular') {
+      return b.daily_review_count - a.daily_review_count || (b.daily_avg_score ?? -1) - (a.daily_avg_score ?? -1) || byTitle(a, b);
     }
     if (sort === 'weekly_score') {
       const hasA = a.weekly_avg_score !== null ? 1 : 0;
