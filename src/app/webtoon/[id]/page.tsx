@@ -63,10 +63,17 @@ export default async function WebtoonDetailPage({ params }: Props) {
   const maxCount = Math.max(...scoreDistribution.map((d) => d.count), 1);
   const diagnosis = getDiagnosis(webtoon);
 
-  // 타인 리뷰 목록 (내 리뷰 제외)
-  const otherReviews = user
-    ? reviews.filter((r) => r.user_id !== user.id)
-    : reviews;
+  // 베스트 3 (추천 많은 순, 추천 1개 이상)
+  const bestReviews = [...reviews]
+    .filter((r) => r.recommend_count > 0)
+    .sort((a, b) => b.recommend_count - a.recommend_count)
+    .slice(0, 3);
+  const bestIds = new Set(bestReviews.map((r) => r.id));
+
+  // 나머지: 최신순 (베스트 제외)
+  const restReviews = [...reviews]
+    .filter((r) => !bestIds.has(r.id))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
     <div className="flex flex-col min-h-screen max-w-2xl mx-auto w-full">
@@ -173,26 +180,46 @@ export default async function WebtoonDetailPage({ params }: Props) {
       <section className="flex-1 px-0">
         <div className="px-4 py-3">
           <h2 className="text-sm font-bold">
-            평가{otherReviews.length > 0 ? ` (${otherReviews.length})` : ''}
+            평가{reviews.length > 0 ? ` (${reviews.length})` : ''}
           </h2>
         </div>
 
-        {otherReviews.length === 0 ? (
+        {reviews.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3 text-gray-400">
             <BunnyMascot size={44} />
             <p className="text-sm">아직 평가가 없어요</p>
           </div>
         ) : (
-          <ul className="divide-y divide-gray-100 dark:divide-gray-900">
-            {otherReviews.map((review) => (
-              <ReviewItem
-                key={review.id}
-                review={review}
-                isRecommended={myRecommendedIds.has(review.id)}
-                canRecommend={!!user}
-              />
-            ))}
-          </ul>
+          <>
+            {bestReviews.length > 0 && (
+              <div className="px-4 pb-3">
+                <p className="text-[11px] font-bold text-amber-500 mb-2">★ 베스트 댓글</p>
+                <ul className="grid gap-2">
+                  {bestReviews.map((review) => (
+                    <ReviewItem
+                      key={review.id}
+                      review={review}
+                      isRecommended={myRecommendedIds.has(review.id)}
+                      canRecommend={!!user && review.user_id !== user?.id}
+                      isOwn={user?.id === review.user_id}
+                      isBest
+                    />
+                  ))}
+                </ul>
+              </div>
+            )}
+            <ul className="divide-y divide-gray-100 dark:divide-gray-900">
+              {restReviews.map((review) => (
+                <ReviewItem
+                  key={review.id}
+                  review={review}
+                  isRecommended={myRecommendedIds.has(review.id)}
+                  canRecommend={!!user && review.user_id !== user?.id}
+                  isOwn={user?.id === review.user_id}
+                />
+              ))}
+            </ul>
+          </>
         )}
       </section>
 
@@ -214,22 +241,29 @@ function ReviewItem({
   review,
   isRecommended = false,
   canRecommend = false,
+  isOwn = false,
+  isBest = false,
 }: {
   review: ReviewWithProfile;
   isRecommended?: boolean;
   canRecommend?: boolean;
+  isOwn?: boolean;
+  isBest?: boolean;
 }) {
   const points = review.profiles?.points ?? review.profiles?.total_recommends ?? 0;
   const tier = getPointLevel(points);
 
   return (
-    <li className="px-4 py-3.5">
+    <li className={isBest ? 'rounded-xl border border-amber-100 bg-amber-50/50 px-3 py-3 dark:border-amber-900/40 dark:bg-amber-950/10' : 'px-4 py-3.5'}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1 flex-wrap">
             <TierBunny tier={tier.label} size={22} />
             <span className="text-sm font-semibold">{review.profiles?.nickname ?? '익명'}</span>
             <span className={`text-[10px] font-medium ${tier.color}`}>{tier.label}</span>
+            {isOwn && (
+              <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-black text-white">나</span>
+            )}
           </div>
           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">
             {review.comment || '별점만 남겼어요'}
