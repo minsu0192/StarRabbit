@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { containsProfanity, containsPromoLink } from '@/lib/filter';
-import { awardReviewPoints } from '@/lib/points';
+import { awardReviewPoints, awardAttendanceStars } from '@/lib/points';
 
 function normalizeScore(score: number) {
   if (!Number.isFinite(score)) return null;
@@ -112,6 +112,14 @@ export async function updateNickname(
   return error
     ? { error: error.code === '23505' ? '이미 사용 중인 닉네임입니다' : error.message }
     : {};
+}
+
+export async function checkAttendance(): Promise<{ success?: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: '로그인이 필요합니다' };
+
+  return awardAttendanceStars(supabase, user.id);
 }
 
 export async function reportReview(

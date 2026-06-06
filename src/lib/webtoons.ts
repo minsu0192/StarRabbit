@@ -315,6 +315,35 @@ export async function getWebtoons(
 
     const { count } = await countQuery;
     total = count ?? data?.length ?? 0;
+
+    // PostgREST caps responses at 1000 rows — fetch remaining pages in parallel
+    if (needsClientSort && data && data.length === 1000 && total > 1000) {
+      const PAGE_SIZE = 1000;
+      const maxItems = Math.min(total, LIST_CANDIDATE_LIMIT);
+      const extraPageCount = Math.ceil((maxItems - PAGE_SIZE) / PAGE_SIZE);
+      const selectClause = platform && VALID_PLATFORMS.includes(platform)
+        ? `*, webtoon_sources!inner(*)`
+        : `*, webtoon_sources(*)`;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const extraPagePromises = Array.from({ length: extraPageCount }, (_, i) => {
+        const pageFrom = (i + 1) * PAGE_SIZE;
+        const pageTo = Math.min(pageFrom + PAGE_SIZE - 1, LIST_CANDIDATE_LIMIT - 1);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let q: any = supabase.from('webtoons').select(selectClause);
+        if (platform && VALID_PLATFORMS.includes(platform)) q = q.eq('webtoon_sources.platform', platform);
+        if (status && VALID_STATUSES.includes(status)) q = q.eq('status', status);
+        if (genre && VALID_GENRES.includes(genre)) q = q.eq('genre', genre);
+        q = applyInitialFilter(q, initial);
+        q = q.order(sort === 'latest' ? 'created_at' : 'title', { ascending: sort !== 'latest' });
+        return q.range(pageFrom, pageTo);
+      });
+
+      const extraResults = await Promise.all(extraPagePromises);
+      for (const result of extraResults) {
+        if (result.data) data = mergeById(data, result.data);
+      }
+    }
   }
 
   if (error?.message?.includes('webtoon_sources')) {
@@ -343,6 +372,31 @@ export async function getWebtoons(
     fallbackCount = applyInitialFilter(fallbackCount, initial);
     const { count } = await fallbackCount;
     total = count ?? data?.length ?? 0;
+
+    // PostgREST 1000-row cap — fetch remaining pages in parallel (fallback path)
+    if (needsClientSort && data && data.length === 1000 && total > 1000) {
+      const PAGE_SIZE = 1000;
+      const maxItems = Math.min(total, LIST_CANDIDATE_LIMIT);
+      const extraPageCount = Math.ceil((maxItems - PAGE_SIZE) / PAGE_SIZE);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const extraPagePromises = Array.from({ length: extraPageCount }, (_, i) => {
+        const pageFrom = (i + 1) * PAGE_SIZE;
+        const pageTo = Math.min(pageFrom + PAGE_SIZE - 1, LIST_CANDIDATE_LIMIT - 1);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let q: any = supabase.from('webtoons').select('*');
+        if (status && VALID_STATUSES.includes(status)) q = q.eq('status', status);
+        if (genre && VALID_GENRES.includes(genre)) q = q.eq('genre', genre);
+        q = applyInitialFilter(q, initial);
+        q = q.order(sort === 'latest' ? 'created_at' : 'title', { ascending: sort !== 'latest' });
+        return q.range(pageFrom, pageTo);
+      });
+
+      const extraResults = await Promise.all(extraPagePromises);
+      for (const result of extraResults) {
+        if (result.data) data = mergeById(data, result.data);
+      }
+    }
   }
 
   if (error || !data) return { items: [], total: 0, page: safePage, limit: safeLimit };

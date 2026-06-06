@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/weekly-ranking",
+      "schedule": "0 0 * * 1"
+    }
+  ]
+}

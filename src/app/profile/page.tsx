@@ -8,6 +8,7 @@ import NicknameForm from '@/components/NicknameForm';
 import ScoreBadge from '@/components/ScoreBadge';
 import BunnyMascot from '@/components/BunnyMascot';
 import TierBunny from '@/components/TierBunny';
+import AttendanceButton from '@/components/AttendanceButton';
 import { POINT_LEVELS, POINT_RULES, getPointLevel } from '@/lib/points';
 
 function getRank(total: number): { label: string; color: string; next: string; needed: number | null } {
@@ -25,7 +26,7 @@ export default async function ProfilePage() {
 
   const { data: profileWithPoints, error: profileError } = await supabase
     .from('profiles')
-    .select('nickname, total_recommends, points')
+    .select('nickname, total_recommends, points, last_attendance_at')
     .eq('id', user.id)
     .single();
   const { data: profileFallback } = profileError
@@ -49,6 +50,12 @@ export default async function ProfilePage() {
   const points = Number(rawPoints ?? totalRecommends);
   const rank = getRank(totalRecommends);
   const pointLevel = getPointLevel(points);
+
+  const lastAttendance = profile && 'last_attendance_at' in profile
+    ? profile.last_attendance_at as string | null
+    : null;
+  const today = new Date().toISOString().slice(0, 10);
+  const checkedToday = lastAttendance != null && lastAttendance.slice(0, 10) === today;
 
   return (
     <div className="flex flex-col min-h-screen max-w-2xl mx-auto w-full">
@@ -77,15 +84,16 @@ export default async function ProfilePage() {
         </div>
       </section>
 
+      {/* 스타 & 출석체크 */}
       <section className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
         <div className="mb-3 flex items-end justify-between gap-3">
           <div>
-            <h2 className="text-sm font-bold">내 포인트</h2>
+            <h2 className="text-sm font-bold">내 스타</h2>
             <p className={`mt-1 text-lg font-black ${pointLevel.color}`}>{pointLevel.label}</p>
           </div>
           <div className="text-right">
             <p className="text-2xl font-black tabular-nums">{points.toLocaleString()}</p>
-            <p className="text-xs text-gray-400">포인트</p>
+            <p className="text-xs text-gray-400">스타 ★</p>
           </div>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-900">
@@ -94,12 +102,16 @@ export default async function ProfilePage() {
         <p className="mt-2 text-xs text-gray-400">
           {pointLevel.remaining === null
             ? '최고 등급입니다'
-            : `${pointLevel.nextLabel}까지 ${pointLevel.remaining.toLocaleString()}점 남음`}
+            : `${pointLevel.nextLabel}까지 ${pointLevel.remaining.toLocaleString()} 스타 남음`}
         </p>
+        <div className="mt-4 flex items-center gap-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-3 dark:border-amber-900 dark:bg-amber-950/20">
+          <span className="text-xs text-amber-700 dark:text-amber-400 flex-1">오늘 출석 체크하고 50 스타 받기</span>
+          <AttendanceButton checkedToday={checkedToday} />
+        </div>
       </section>
 
       <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
-        <h2 className="text-sm font-bold mb-3">포인트 제도</h2>
+        <h2 className="text-sm font-bold mb-3">스타 획득 방법</h2>
         <div className="divide-y divide-gray-100 rounded-md border border-gray-100 dark:divide-gray-900 dark:border-gray-900">
           {POINT_RULES.map((rule) => (
             <div key={rule.label} className="grid grid-cols-[1fr_auto] gap-3 px-3 py-3">
@@ -123,7 +135,7 @@ export default async function ProfilePage() {
               {pointLevel.label === level.label && (
                 <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black text-white">현재</span>
               )}
-              <span className="text-xs font-semibold text-gray-400">{level.min.toLocaleString()}점</span>
+              <span className="text-xs font-semibold text-gray-400">{level.min.toLocaleString()} 스타</span>
             </div>
           ))}
         </div>
