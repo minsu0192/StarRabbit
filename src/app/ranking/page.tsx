@@ -3,6 +3,8 @@ export const runtime = 'edge';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import ScoreBadge from '@/components/ScoreBadge';
+import TierBunny from '@/components/TierBunny';
+import { getPointLevel } from '@/lib/points';
 import { getWebtoons } from '@/lib/webtoons';
 import { createClient } from '@/lib/supabase/server';
 import type { WebtoonWithStats, SortOption } from '@/types';
@@ -61,7 +63,7 @@ export default async function RankingPage({ searchParams }: Props) {
     getWebtoons(popularSort(tab), undefined, undefined, 1, 20),
     supabase
       .from('reviews')
-      .select('id, webtoon_id, score, comment, recommend_count, created_at, profiles(nickname), webtoons(title)')
+      .select('id, webtoon_id, score, comment, recommend_count, created_at, profiles(nickname, total_recommends, points), webtoons(title)')
       .gt('recommend_count', 0)
       .not('comment', 'is', null)
       .neq('comment', '')
@@ -153,7 +155,8 @@ export default async function RankingPage({ searchParams }: Props) {
             <ul className="grid gap-3">
               {topReviews.map((review, i) => {
                 const webtoon = review.webtoons as { title?: string } | null;
-                const profile = review.profiles as { nickname?: string } | null;
+                const profile = review.profiles as { nickname?: string; total_recommends?: number; points?: number } | null;
+                const tier = getPointLevel(profile?.points ?? profile?.total_recommends ?? 0);
                 return (
                   <li key={review.id}>
                     <Link href={`/webtoon/${review.webtoon_id}`} className="block rounded-xl border border-gray-100 bg-white p-3 hover:border-amber-200 dark:border-gray-900 dark:bg-gray-950 dark:hover:border-amber-900">
@@ -168,7 +171,10 @@ export default async function RankingPage({ searchParams }: Props) {
                         &ldquo;{review.comment}&rdquo;
                       </p>
                       <div className="mt-2 flex items-center justify-between">
-                        <span className="text-[11px] text-gray-400">{profile?.nickname ?? '익명'}</span>
+                        <div className="flex items-center gap-1.5">
+                          <TierBunny tier={tier.label} size={18} />
+                          <span className="text-[11px] text-gray-400">{profile?.nickname ?? '익명'}</span>
+                        </div>
                         <span className="text-[11px] font-bold text-amber-500">♥ {review.recommend_count}</span>
                       </div>
                     </Link>

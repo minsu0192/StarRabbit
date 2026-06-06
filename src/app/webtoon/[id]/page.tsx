@@ -8,21 +8,16 @@ import { ReviewWithProfile } from '@/types';
 import ScoreBadge from '@/components/ScoreBadge';
 import PlatformBadge, { PlatformBadges } from '@/components/PlatformBadge';
 import BunnyMascot from '@/components/BunnyMascot';
+import TierBunny from '@/components/TierBunny';
 import LoginButton from '@/components/LoginButton';
 import ReviewForm from '@/components/ReviewForm';
 import ReportButton from '@/components/ReportButton';
 import SiteFooter from '@/components/SiteFooter';
 import { getDiagnosis } from '@/lib/diagnosis';
+import { getPointLevel } from '@/lib/points';
 
 interface Props {
   params: Promise<{ id: string }>;
-}
-
-function getRank(total: number): { label: string; color: string } {
-  if (total >= 1000) return { label: '별토끼', color: 'text-amber-500' };
-  if (total >= 100)  return { label: '달토끼', color: 'text-blue-500' };
-  if (total >= 10)   return { label: '들토끼', color: 'text-green-500' };
-  return { label: '길토끼', color: 'text-gray-400' };
 }
 
 function formatDate(iso: string) {
@@ -200,15 +195,17 @@ function LoginButtonSection() {
 }
 
 function ReviewItem({ review }: { review: ReviewWithProfile }) {
-  const rank = getRank(review.profiles?.total_recommends ?? 0);
+  const points = review.profiles?.points ?? review.profiles?.total_recommends ?? 0;
+  const tier = getPointLevel(points);
 
   return (
     <li className="px-4 py-3.5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+            <TierBunny tier={tier.label} size={22} />
             <span className="text-sm font-semibold">{review.profiles?.nickname ?? '익명'}</span>
-            <span className={`text-[10px] font-medium ${rank.color}`}>{rank.label}</span>
+            <span className={`text-[10px] font-medium ${tier.color}`}>{tier.label}</span>
           </div>
           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">
             {review.comment || '별점만 남겼어요'}

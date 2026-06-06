@@ -69,5 +69,5 @@ export interface Review {
 export type SortOption = 'featured' | 'score' | 'popular' | 'daily_score' | 'daily_popular' | 'weekly_score' | 'weekly_comments' | 'monthly_score' | 'monthly_popular' | 'yearly_score' | 'yearly_popular' | 'latest';
 
 export interface ReviewWithProfile extends Omit<Review, 'profiles'> {
-  profiles: Pick<Profile, 'nickname' | 'total_recommends'>;
+  profiles: Pick<Profile, 'nickname' | 'total_recommends'> & { points?: number | null };
 }

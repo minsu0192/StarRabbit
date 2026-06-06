@@ -495,7 +495,7 @@ export async function getReviewsByWebtoon(webtoonId: string): Promise<ReviewWith
 
   const { data, error } = await supabase
     .from('reviews')
-    .select(`*, profiles(nickname, total_recommends)`)
+    .select(`*, profiles(nickname, total_recommends, points)`)
     .eq('webtoon_id', webtoonId)
     .order('recommend_count', { ascending: false });
 
