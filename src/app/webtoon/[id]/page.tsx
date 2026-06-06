@@ -271,18 +271,17 @@ function ReviewItem({
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className="text-[11px] text-gray-400 dark:text-gray-500">{formatDate(review.created_at)}</span>
             <span className="text-[11px] text-gray-300 dark:text-gray-700">·</span>
-            <RecommendButton
-              reviewId={review.id}
-              initialCount={review.recommend_count}
-              initialRecommended={isRecommended}
-              canRecommend={canRecommend}
-            />
-            <span className="text-[11px] text-gray-300 dark:text-gray-700">·</span>
             <ReportButton reviewId={review.id} />
           </div>
         </div>
-        <div className="shrink-0">
+        <div className="shrink-0 flex flex-col items-center gap-2">
           <ScoreBadge score={review.score} size="sm" />
+          <RecommendButton
+            reviewId={review.id}
+            initialCount={review.recommend_count}
+            initialRecommended={isRecommended}
+            canRecommend={canRecommend}
+          />
         </div>
       </div>
     </li>

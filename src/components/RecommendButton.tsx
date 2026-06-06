@@ -14,33 +14,42 @@ export default function RecommendButton({ reviewId, initialCount, initialRecomme
   const [recommended, setRecommended] = useState(initialRecommended);
   const [count, setCount] = useState(initialCount);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   async function handleClick() {
     if (!canRecommend || loading) return;
     setLoading(true);
+    setErrorMsg(null);
     const result = await toggleRecommend(reviewId);
     setLoading(false);
-    if (!result.error) {
-      setRecommended(!recommended);
+    if (result.error) {
+      setErrorMsg(result.error);
+    } else {
+      setRecommended((prev) => !prev);
       setCount((c) => recommended ? c - 1 : c + 1);
     }
   }
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={!canRecommend || loading}
-      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold transition-colors ${
-        recommended
-          ? 'border-red-300 bg-red-50 text-red-500 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400'
-          : canRecommend
-            ? 'border-gray-200 text-gray-400 hover:border-red-200 hover:bg-red-50 hover:text-red-400 dark:border-gray-800 dark:hover:border-red-900 dark:hover:bg-red-950/20'
-            : 'border-gray-100 text-gray-300 dark:border-gray-900 dark:text-gray-700 cursor-default'
-      }`}
-    >
-      <span>★</span>
-      <span>추천</span>
-      {count > 0 && <span className="tabular-nums">{count}명</span>}
-    </button>
+    <div className="flex flex-col items-center gap-1">
+      <button
+        onClick={handleClick}
+        disabled={!canRecommend || loading}
+        className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold transition-colors ${
+          recommended
+            ? 'border-amber-300 bg-amber-50 text-amber-500 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
+            : canRecommend
+              ? 'border-gray-200 text-gray-400 hover:border-amber-200 hover:bg-amber-50 hover:text-amber-500 dark:border-gray-800 dark:hover:border-amber-900 dark:hover:bg-amber-950/20'
+              : 'border-gray-100 text-gray-300 dark:border-gray-900 dark:text-gray-700 cursor-default'
+        }`}
+      >
+        <span>★</span>
+        <span>{loading ? '...' : '추천'}</span>
+        {count > 0 && <span className="tabular-nums">{count}명</span>}
+      </button>
+      {errorMsg && (
+        <span className="text-[10px] text-red-400">{errorMsg}</span>
+      )}
+    </div>
   );
 }
