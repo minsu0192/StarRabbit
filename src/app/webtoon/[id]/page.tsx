@@ -12,6 +12,7 @@ import TierBunny from '@/components/TierBunny';
 import LoginButton from '@/components/LoginButton';
 import ReviewForm from '@/components/ReviewForm';
 import ReportButton from '@/components/ReportButton';
+import RecommendButton from '@/components/RecommendButton';
 import SiteFooter from '@/components/SiteFooter';
 import { getDiagnosis } from '@/lib/diagnosis';
 import { getPointLevel } from '@/lib/points';
@@ -37,6 +38,16 @@ export default async function WebtoonDetailPage({ params }: Props) {
   ]);
 
   if (!webtoon) notFound();
+
+  // 현재 유저가 추천한 리뷰 ID 목록
+  const myRecommendedIds = user && reviews.length > 0
+    ? await supabase
+        .from('recommends')
+        .select('review_id')
+        .eq('user_id', user.id)
+        .in('review_id', reviews.map((r) => r.id))
+        .then(({ data }) => new Set((data ?? []).map((r) => r.review_id)))
+    : new Set<string>();
 
   const userInfo = user
     ? {
@@ -174,7 +185,12 @@ export default async function WebtoonDetailPage({ params }: Props) {
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-gray-900">
             {otherReviews.map((review) => (
-              <ReviewItem key={review.id} review={review} />
+              <ReviewItem
+                key={review.id}
+                review={review}
+                isRecommended={myRecommendedIds.has(review.id)}
+                canRecommend={!!user}
+              />
             ))}
           </ul>
         )}
@@ -194,7 +210,15 @@ function LoginButtonSection() {
   );
 }
 
-function ReviewItem({ review }: { review: ReviewWithProfile }) {
+function ReviewItem({
+  review,
+  isRecommended = false,
+  canRecommend = false,
+}: {
+  review: ReviewWithProfile;
+  isRecommended?: boolean;
+  canRecommend?: boolean;
+}) {
   const points = review.profiles?.points ?? review.profiles?.total_recommends ?? 0;
   const tier = getPointLevel(points);
 
@@ -210,15 +234,16 @@ function ReviewItem({ review }: { review: ReviewWithProfile }) {
           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">
             {review.comment || '별점만 남겼어요'}
           </p>
-          <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gray-400 dark:text-gray-500 flex-wrap">
-            <span>{formatDate(review.created_at)}</span>
-            {review.recommend_count > 0 && (
-              <>
-                <span>·</span>
-                <span>♥ {review.recommend_count}</span>
-              </>
-            )}
-            <span>·</span>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">{formatDate(review.created_at)}</span>
+            <span className="text-[11px] text-gray-300 dark:text-gray-700">·</span>
+            <RecommendButton
+              reviewId={review.id}
+              initialCount={review.recommend_count}
+              initialRecommended={isRecommended}
+              canRecommend={canRecommend}
+            />
+            <span className="text-[11px] text-gray-300 dark:text-gray-700">·</span>
             <ReportButton reviewId={review.id} />
           </div>
         </div>
