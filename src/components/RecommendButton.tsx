@@ -38,7 +38,7 @@ export default function RecommendButton({ reviewId, initialCount, initialRecomme
             : 'border-gray-100 text-gray-300 dark:border-gray-900 dark:text-gray-700 cursor-default'
       }`}
     >
-      <span>♥</span>
+      <span>★</span>
       <span>추천</span>
       {count > 0 && <span className="tabular-nums">{count}명</span>}
     </button>

@@ -175,7 +175,7 @@ export default async function RankingPage({ searchParams }: Props) {
                           <TierBunny tier={tier.label} size={18} />
                           <span className="text-[11px] text-gray-400">{profile?.nickname ?? '익명'}</span>
                         </div>
-                        <span className="text-[11px] font-bold text-amber-500">♥ {review.recommend_count}</span>
+                        <span className="text-[11px] font-bold text-amber-500">★ {review.recommend_count}</span>
                       </div>
                     </Link>
                   </li>
