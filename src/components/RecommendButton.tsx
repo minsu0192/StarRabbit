@@ -30,15 +30,17 @@ export default function RecommendButton({ reviewId, initialCount, initialRecomme
     <button
       onClick={handleClick}
       disabled={!canRecommend || loading}
-      className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold transition-colors ${
+      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold transition-colors ${
         recommended
-          ? 'bg-red-50 text-red-500 dark:bg-red-950/30'
+          ? 'border-red-300 bg-red-50 text-red-500 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400'
           : canRecommend
-            ? 'text-gray-400 hover:bg-red-50 hover:text-red-400 dark:hover:bg-red-950/30'
-            : 'text-gray-300 dark:text-gray-700 cursor-default'
+            ? 'border-gray-200 text-gray-400 hover:border-red-200 hover:bg-red-50 hover:text-red-400 dark:border-gray-800 dark:hover:border-red-900 dark:hover:bg-red-950/20'
+            : 'border-gray-100 text-gray-300 dark:border-gray-900 dark:text-gray-700 cursor-default'
       }`}
     >
-      ♥{count > 0 ? ` ${count}` : ''}
+      <span>♥</span>
+      <span>추천</span>
+      {count > 0 && <span className="tabular-nums">{count}명</span>}
     </button>
   );
 }
