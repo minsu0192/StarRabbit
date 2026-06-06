@@ -325,7 +325,6 @@ export async function getWebtoons(
         ? `*, webtoon_sources!inner(*)`
         : `*, webtoon_sources(*)`;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const extraPagePromises = Array.from({ length: extraPageCount }, (_, i) => {
         const pageFrom = (i + 1) * PAGE_SIZE;
         const pageTo = Math.min(pageFrom + PAGE_SIZE - 1, LIST_CANDIDATE_LIMIT - 1);
@@ -335,7 +334,7 @@ export async function getWebtoons(
         if (status && VALID_STATUSES.includes(status)) q = q.eq('status', status);
         if (genre && VALID_GENRES.includes(genre)) q = q.eq('genre', genre);
         q = applyInitialFilter(q, initial);
-        q = q.order(sort === 'latest' ? 'created_at' : 'title', { ascending: sort !== 'latest' });
+        q = q.order('title', { ascending: true });
         return q.range(pageFrom, pageTo);
       });
 
@@ -379,7 +378,6 @@ export async function getWebtoons(
       const maxItems = Math.min(total, LIST_CANDIDATE_LIMIT);
       const extraPageCount = Math.ceil((maxItems - PAGE_SIZE) / PAGE_SIZE);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const extraPagePromises = Array.from({ length: extraPageCount }, (_, i) => {
         const pageFrom = (i + 1) * PAGE_SIZE;
         const pageTo = Math.min(pageFrom + PAGE_SIZE - 1, LIST_CANDIDATE_LIMIT - 1);
@@ -388,7 +386,7 @@ export async function getWebtoons(
         if (status && VALID_STATUSES.includes(status)) q = q.eq('status', status);
         if (genre && VALID_GENRES.includes(genre)) q = q.eq('genre', genre);
         q = applyInitialFilter(q, initial);
-        q = q.order(sort === 'latest' ? 'created_at' : 'title', { ascending: sort !== 'latest' });
+        q = q.order('title', { ascending: true });
         return q.range(pageFrom, pageTo);
       });
 
