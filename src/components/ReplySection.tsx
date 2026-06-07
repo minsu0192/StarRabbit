@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { createReply, deleteReply } from '@/app/actions';
 
 interface Reply {
   id: string;
@@ -30,7 +29,12 @@ export default function ReplySection({ reviewId, initialReplies, currentUserId, 
     if (!text.trim() || submitting) return;
     setSubmitting(true);
     setError(null);
-    const result = await createReply(reviewId, text);
+    const res = await fetch('/api/reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reviewId, comment: text }),
+    });
+    const result = await res.json() as { error?: string };
     setSubmitting(false);
     if (result.error) {
       setError(result.error);
@@ -51,7 +55,12 @@ export default function ReplySection({ reviewId, initialReplies, currentUserId, 
   }
 
   async function handleDelete(replyId: string) {
-    const result = await deleteReply(replyId);
+    const res = await fetch('/api/reply', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ replyId }),
+    });
+    const result = await res.json() as { error?: string };
     if (!result.error) {
       setReplies((prev) => prev.filter((r) => r.id !== replyId));
     }

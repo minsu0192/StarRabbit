@@ -35,7 +35,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- 추천 취소 트리거: points 차감 (로그는 남기지 않음)
+-- 추천 취소 트리거: recommend_count만 감소, points는 유지
 CREATE OR REPLACE FUNCTION public.handle_recommend_delete()
 RETURNS trigger AS $$
 DECLARE
@@ -47,9 +47,9 @@ BEGIN
 
   SELECT user_id INTO v_review_owner FROM public.reviews WHERE id = OLD.review_id;
 
+  -- total_recommends만 차감, points는 차감하지 않음 (이미 획득한 포인트는 유지)
   UPDATE public.profiles
-  SET total_recommends = GREATEST(total_recommends - 1, 0),
-      points           = GREATEST(COALESCE(points, 0) - 10, 0)
+  SET total_recommends = GREATEST(total_recommends - 1, 0)
   WHERE id = v_review_owner;
 
   RETURN OLD;
