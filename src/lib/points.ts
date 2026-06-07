@@ -48,23 +48,28 @@ export async function awardReviewPoints(
   userId: string,
   previousComment: string | null | undefined,
   nextComment: string,
+  webtoonId?: string,
 ) {
   const previousPoints = previousComment === undefined ? 0 : reviewPointValue(previousComment);
   const nextPoints = reviewPointValue(nextComment);
   const delta = Math.max(nextPoints - previousPoints, 0);
   if (delta <= 0) return;
 
-  const { data } = await supabase
-    .from('profiles')
-    .select('points')
-    .eq('id', userId)
-    .single();
+  const reason = nextPoints === 15 && previousPoints === 5
+    ? '한줄평 추가 작성'
+    : nextPoints === 15
+      ? '별점 + 한줄평 남기기'
+      : '별점 남기기';
 
-  const currentPoints = Number(data?.points ?? 0);
-  await supabase
-    .from('profiles')
-    .update({ points: currentPoints + delta })
-    .eq('id', userId);
+  const uniqueKey = `review:${userId}:${webtoonId ?? 'unknown'}:${reason}`;
+
+  await supabase.rpc('award_points', {
+    p_user_id: userId,
+    p_amount: delta,
+    p_reason: reason,
+    p_unique_key: uniqueKey,
+    p_metadata: webtoonId ? { webtoon_id: webtoonId } : {},
+  });
 }
 
 export async function awardAttendanceStars(

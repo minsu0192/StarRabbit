@@ -49,7 +49,7 @@ export async function createOrUpdateReview(
 
   if (error) return { error: error.message };
 
-  await awardReviewPoints(supabase, user.id, existingReview?.comment, trimmed);
+  await awardReviewPoints(supabase, user.id, existingReview?.comment, trimmed, webtoonId);
 
   return {};
 }

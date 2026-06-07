@@ -5,10 +5,11 @@ import { createClient } from '@/lib/supabase/server';
 import Header from '@/components/Header';
 import SiteFooter from '@/components/SiteFooter';
 import NicknameForm from '@/components/NicknameForm';
-import ScoreBadge from '@/components/ScoreBadge';
 import BunnyMascot from '@/components/BunnyMascot';
+import MyReviewList from '@/components/MyReviewList';
 import TierBunny from '@/components/TierBunny';
 import { POINT_LEVELS, POINT_RULES, getPointLevel } from '@/lib/points';
+import PointHistoryModal from '@/components/PointHistoryModal';
 
 function getRank(total: number): { label: string; color: string; next: string; needed: number | null } {
   if (total >= 1000) return { label: '별토끼', color: 'text-amber-500', next: '무지개토끼', needed: null };
@@ -112,11 +113,14 @@ export default async function ProfilePage() {
         <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-900">
           <div className="h-full rounded-full bg-amber-400" style={{ width: `${pointLevel.progress}%` }} />
         </div>
-        <p className="mt-2 text-xs text-gray-400">
-          {pointLevel.remaining === null
-            ? '최고 등급입니다'
-            : `${pointLevel.nextLabel}까지 ${pointLevel.remaining.toLocaleString()} 스타 남음`}
-        </p>
+        <div className="mt-2 flex items-center justify-between">
+          <p className="text-xs text-gray-400">
+            {pointLevel.remaining === null
+              ? '최고 등급입니다'
+              : `${pointLevel.nextLabel}까지 ${pointLevel.remaining.toLocaleString()} 스타 남음`}
+          </p>
+          <PointHistoryModal userId={user.id} />
+        </div>
         <div className={`mt-4 flex items-center gap-2 rounded-xl border px-3 py-3 ${
           checkedToday
             ? 'border-green-100 bg-green-50 dark:border-green-900 dark:bg-green-950/20'
@@ -205,27 +209,10 @@ export default async function ProfilePage() {
             <p className="text-sm">아직 남긴 한줄평이 없어요</p>
           </div>
         ) : (
-          <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-            {reviews.map((review) => (
-              <li key={review.id} className="px-4 py-3.5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-400 mb-0.5">
-                      {(review.webtoons as { title: string } | null)?.title ?? '알 수 없음'}
-                    </p>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">
-                      {review.comment}
-                    </p>
-                    <p className="text-[11px] text-gray-400 mt-1">
-                      {review.created_at.slice(0, 10).replace(/-/g, '.')}
-                      {review.recommend_count > 0 && ` · ★ ${review.recommend_count}`}
-                    </p>
-                  </div>
-                  <ScoreBadge score={review.score} size="sm" />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <MyReviewList reviews={reviews.map((r) => ({
+            ...r,
+            webtoons: (r.webtoons as { title: string } | null),
+          }))} />
         )}
       </section>
 
