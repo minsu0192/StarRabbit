@@ -25,6 +25,8 @@ CREATE INDEX IF NOT EXISTS point_transactions_user_id_idx ON public.point_transa
 
 ALTER TABLE public.point_transactions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "point_transactions_read_own" ON public.point_transactions;
+
 CREATE POLICY "point_transactions_read_own"
   ON public.point_transactions FOR SELECT
   USING (auth.uid() = user_id);
@@ -167,6 +169,10 @@ CREATE TABLE IF NOT EXISTS public.review_replies (
 CREATE INDEX IF NOT EXISTS review_replies_review_id_idx ON public.review_replies (review_id);
 
 ALTER TABLE public.review_replies ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "replies_read"   ON public.review_replies;
+DROP POLICY IF EXISTS "replies_insert" ON public.review_replies;
+DROP POLICY IF EXISTS "replies_delete" ON public.review_replies;
 
 CREATE POLICY "replies_read"   ON public.review_replies FOR SELECT USING (true);
 CREATE POLICY "replies_insert" ON public.review_replies FOR INSERT WITH CHECK (auth.uid() = user_id);
