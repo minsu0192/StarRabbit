@@ -23,6 +23,9 @@ export default async function ProfilePage() {
 
   if (!user) redirect('/');
 
+  // 출석 체크를 포인트 조회보다 먼저 실행 (race condition 방지)
+  await supabase.rpc('auto_attend', { p_user_id: user.id });
+
   const { data: profileWithPoints, error: profileError } = await supabase
     .from('profiles')
     .select('nickname, total_recommends, points, last_attendance_at')
