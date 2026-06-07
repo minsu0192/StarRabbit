@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS public.point_transactions (
 );
 
 CREATE INDEX IF NOT EXISTS point_transactions_user_id_idx ON public.point_transactions(user_id);
+CREATE INDEX IF NOT EXISTS point_transactions_user_created_at_idx
+  ON public.point_transactions(user_id, created_at DESC);
 
 ALTER TABLE public.point_transactions ENABLE ROW LEVEL SECURITY;
 

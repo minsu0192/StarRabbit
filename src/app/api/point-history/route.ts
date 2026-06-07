@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/server';
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const from = Number(url.searchParams.get('from') ?? '0');
-    const to = Number(url.searchParams.get('to') ?? '29');
+    const from = Math.max(0, Number(url.searchParams.get('from') ?? '0'));
+    const requestedTo = Number(url.searchParams.get('to') ?? '19');
+    const to = Math.min(Math.max(from, requestedTo), from + 49);
 
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -20,7 +21,10 @@ export async function GET(request: Request) {
       .range(from, to);
 
     if (error) return Response.json({ error: error.message }, { status: 500 });
-    return Response.json({ transactions: data ?? [] });
+    return Response.json(
+      { transactions: data ?? [] },
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    );
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 
 interface Transaction {
   id: string;
@@ -15,29 +15,52 @@ export default function PointHistoryModal() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [loadedOnce, setLoadedOnce] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const PAGE_SIZE = 30;
+  const PAGE_SIZE = 20;
 
-  const loadMore = useCallback(async (reset = false) => {
+  async function loadMore(reset = false) {
     if (loading) return;
     setLoading(true);
+    setError(null);
     const from = reset ? 0 : page * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 8000);
 
-    const res = await fetch(`/api/point-history?from=${from}&to=${to}`);
-    const data = await res.json() as { transactions: Transaction[]; error?: string };
+    try {
+      const res = await fetch(`/api/point-history?from=${from}&to=${to}`, {
+        signal: controller.signal,
+      });
+      const data = await res.json().catch(() => null) as { transactions?: Transaction[]; error?: string } | null;
 
-    if (!data.error) {
-      setTxs((prev) => reset ? data.transactions : [...prev, ...data.transactions]);
-      setHasMore(data.transactions.length === PAGE_SIZE);
+      if (!res.ok || data?.error) {
+        setError(data?.error ?? '획득 내역을 불러오지 못했어요');
+        return;
+      }
+
+      const transactions = data?.transactions ?? [];
+      setTxs((prev) => reset ? transactions : [...prev, ...transactions]);
+      setHasMore(transactions.length === PAGE_SIZE);
       setPage(reset ? 1 : (p) => p + 1);
+      setLoadedOnce(true);
+    } catch (fetchError) {
+      setError(fetchError instanceof DOMException && fetchError.name === 'AbortError'
+        ? '획득 내역 응답이 지연되고 있어요. 잠시 후 다시 시도해주세요'
+        : '네트워크 오류가 발생했어요');
+    } finally {
+      window.clearTimeout(timeoutId);
+      setLoading(false);
     }
-    setLoading(false);
-  }, [loading, page]);
+  }
 
-  useEffect(() => {
-    if (open && txs.length === 0) loadMore(true);
-  }, [loadMore, open, txs.length]);
+  function handleOpen() {
+    setOpen(true);
+    if (!loadedOnce) {
+      void loadMore(true);
+    }
+  }
 
   function formatDate(iso: string) {
     return iso.slice(0, 16).replace('T', ' ');
@@ -46,7 +69,7 @@ export default function PointHistoryModal() {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={handleOpen}
         className="text-xs font-bold text-amber-500 hover:text-amber-600 underline underline-offset-2"
       >
         획득 내역 보기
@@ -78,7 +101,9 @@ export default function PointHistoryModal() {
             {/* 목록 */}
             <div className="overflow-y-auto flex-1 px-5 py-2">
               {txs.length === 0 && !loading && (
-                <p className="py-10 text-center text-sm text-gray-400">아직 획득 내역이 없어요</p>
+                <p className="py-10 text-center text-sm text-gray-400">
+                  {error ?? '아직 획득 내역이 없어요'}
+                </p>
               )}
               <ul className="divide-y divide-gray-100 dark:divide-gray-900">
                 {txs.map((tx) => (
