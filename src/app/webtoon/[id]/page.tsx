@@ -64,7 +64,7 @@ export default async function WebtoonDetailPage({ params }: Props) {
 
   // review_id별 댓글 맵
   type ReplyRow = { id: string; review_id: string; comment: string; created_at: string; user_id: string; profiles: { nickname: string | null } | null };
-  const repliesByReview = (repliesData as ReplyRow[]).reduce<Record<string, ReplyRow[]>>((acc, r) => {
+  const repliesByReview = (repliesData as unknown as ReplyRow[]).reduce<Record<string, ReplyRow[]>>((acc, r) => {
     (acc[r.review_id] ??= []).push(r);
     return acc;
   }, {});
