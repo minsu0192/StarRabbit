@@ -1,15 +1,114 @@
--- 1. award_points GRANT (출석 포인트 안 쌓이던 버그 수정)
-GRANT EXECUTE ON FUNCTION public.award_points(uuid, int, text, text, jsonb) TO authenticated;
+-- ============================================================
+-- 1. profiles에 points 컬럼 추가 (없으면)
+-- ============================================================
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS points int NOT NULL DEFAULT 0;
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS last_attendance_at timestamptz;
+
+-- ============================================================
+-- 2. point_transactions 테이블 (스타 획득 내역)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.point_transactions (
+  id         uuid    PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    uuid    NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  amount     int     NOT NULL CHECK (amount <> 0),
+  reason     text    NOT NULL,
+  unique_key text    NOT NULL,
+  metadata   jsonb   NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (unique_key)
+);
+
+CREATE INDEX IF NOT EXISTS point_transactions_user_id_idx ON public.point_transactions(user_id);
+
+ALTER TABLE public.point_transactions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "point_transactions_read_own"
+  ON public.point_transactions FOR SELECT
+  USING (auth.uid() = user_id);
+
 GRANT SELECT ON public.point_transactions TO authenticated;
 
--- 2. 자동 출석 체크 함수 (Header에서 매 방문마다 호출 — 하루 1회만 반영)
+-- ============================================================
+-- 3. award_points 함수 (중복 키로 멱등성 보장)
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.award_points(
+  p_user_id   uuid,
+  p_amount    int,
+  p_reason    text,
+  p_unique_key text,
+  p_metadata  jsonb DEFAULT '{}'::jsonb
+)
+RETURNS boolean AS $$
+DECLARE
+  inserted_count int;
+BEGIN
+  INSERT INTO public.point_transactions (user_id, amount, reason, unique_key, metadata)
+  VALUES (p_user_id, p_amount, p_reason, p_unique_key, p_metadata)
+  ON CONFLICT (unique_key) DO NOTHING;
+
+  GET DIAGNOSTICS inserted_count = ROW_COUNT;
+
+  IF inserted_count = 0 THEN
+    RETURN false;
+  END IF;
+
+  UPDATE public.profiles
+  SET points = GREATEST(points + p_amount, 0)
+  WHERE id = p_user_id;
+
+  RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+GRANT EXECUTE ON FUNCTION public.award_points(uuid, int, text, text, jsonb) TO authenticated;
+
+-- ============================================================
+-- 4. 추천 트리거 업데이트 (points 컬럼 포함)
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.handle_recommend_insert()
+RETURNS trigger AS $$
+BEGIN
+  UPDATE public.reviews
+  SET recommend_count = recommend_count + 1
+  WHERE id = NEW.review_id;
+
+  UPDATE public.profiles
+  SET total_recommends = total_recommends + 1,
+      points           = COALESCE(points, 0) + 10
+  WHERE id = (SELECT user_id FROM public.reviews WHERE id = NEW.review_id);
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.handle_recommend_delete()
+RETURNS trigger AS $$
+BEGIN
+  UPDATE public.reviews
+  SET recommend_count = GREATEST(recommend_count - 1, 0)
+  WHERE id = OLD.review_id;
+
+  UPDATE public.profiles
+  SET total_recommends = GREATEST(total_recommends - 1, 0),
+      points           = GREATEST(COALESCE(points, 0) - 10, 0)
+  WHERE id = (SELECT user_id FROM public.reviews WHERE id = OLD.review_id);
+
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- ============================================================
+-- 5. 자동 출석 체크 함수 (하루 1회만 반영)
+-- ============================================================
 CREATE OR REPLACE FUNCTION public.auto_attend(p_user_id uuid)
 RETURNS boolean AS $$
 DECLARE
   v_today   date := current_date;
   v_updated int;
 BEGIN
-  -- 오늘 아직 출석 안 했으면 포인트 지급 + 컬럼 갱신
   UPDATE public.profiles
   SET points             = COALESCE(points, 0) + 50,
       last_attendance_at = now()
@@ -20,7 +119,6 @@ BEGIN
   GET DIAGNOSTICS v_updated = ROW_COUNT;
 
   IF v_updated > 0 THEN
-    -- 트랜잭션 기록 (중복 무시)
     INSERT INTO public.point_transactions (user_id, amount, reason, unique_key, metadata)
     VALUES (
       p_user_id,
@@ -39,7 +137,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 GRANT EXECUTE ON FUNCTION public.auto_attend(uuid) TO authenticated;
 
--- 3. 대댓글 테이블
+-- ============================================================
+-- 6. 대댓글(review_replies) 테이블
+-- ============================================================
 CREATE TABLE IF NOT EXISTS public.review_replies (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   review_id  uuid NOT NULL REFERENCES public.reviews(id)  ON DELETE CASCADE,
