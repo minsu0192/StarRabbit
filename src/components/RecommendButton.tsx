@@ -20,13 +20,19 @@ export default function RecommendButton({ reviewId, initialCount, initialRecomme
     if (!canRecommend || loading) return;
     setLoading(true);
     setErrorMsg(null);
-    const result = await toggleRecommend(reviewId);
-    setLoading(false);
-    if (result.error) {
-      setErrorMsg(result.error);
-    } else {
-      setRecommended((prev) => !prev);
-      setCount((c) => recommended ? c - 1 : c + 1);
+    try {
+      const result = await toggleRecommend(reviewId);
+      if (result.error) {
+        setErrorMsg(result.error);
+      } else {
+        const wasRecommended = recommended;
+        setRecommended(!wasRecommended);
+        setCount((c) => wasRecommended ? c - 1 : c + 1);
+      }
+    } catch {
+      setErrorMsg('오류가 발생했어요. 다시 시도해주세요');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -45,7 +51,7 @@ export default function RecommendButton({ reviewId, initialCount, initialRecomme
       >
         <span>★</span>
         <span>{loading ? '...' : '추천'}</span>
-        {count > 0 && <span className="tabular-nums">{count}명</span>}
+        <span className="tabular-nums">{count}명</span>
       </button>
       {errorMsg && (
         <span className="text-[10px] text-red-400">{errorMsg}</span>
