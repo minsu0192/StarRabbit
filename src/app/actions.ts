@@ -125,37 +125,41 @@ export async function checkAttendance(): Promise<{ success?: boolean; error?: st
 export async function toggleRecommend(
   reviewId: string,
 ): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: '로그인이 필요합니다' };
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: '로그인이 필요합니다' };
 
-  const { data: existing } = await supabase
-    .from('recommends')
-    .select('id')
-    .eq('review_id', reviewId)
-    .eq('user_id', user.id)
-    .maybeSingle();
+    const { data: existing } = await supabase
+      .from('recommends')
+      .select('id')
+      .eq('review_id', reviewId)
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-  if (existing) {
+    if (existing) {
+      const { error } = await supabase
+        .from('recommends')
+        .delete()
+        .eq('review_id', reviewId)
+        .eq('user_id', user.id);
+      return error ? { error: error.message } : {};
+    }
+
+    const { data: review } = await supabase
+      .from('reviews')
+      .select('user_id')
+      .eq('id', reviewId)
+      .single();
+    if (review?.user_id === user.id) return { error: '내 한줄평은 추천할 수 없어요' };
+
     const { error } = await supabase
       .from('recommends')
-      .delete()
-      .eq('review_id', reviewId)
-      .eq('user_id', user.id);
+      .insert({ review_id: reviewId, user_id: user.id });
     return error ? { error: error.message } : {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
   }
-
-  const { data: review } = await supabase
-    .from('reviews')
-    .select('user_id')
-    .eq('id', reviewId)
-    .single();
-  if (review?.user_id === user.id) return { error: '내 한줄평은 추천할 수 없어요' };
-
-  const { error } = await supabase
-    .from('recommends')
-    .insert({ review_id: reviewId, user_id: user.id });
-  return error ? { error: error.message } : {};
 }
 
 export async function createReply(
