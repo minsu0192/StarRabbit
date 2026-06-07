@@ -25,13 +25,17 @@ export default function RecommendButton({ reviewId, initialCount, initialRecomme
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reviewId }),
       });
-      const data = await res.json() as { error?: string; recommended?: boolean };
-      if (data.error) {
-        setErrorMsg(data.error);
+      const data = await res.json().catch(() => null) as { error?: string; recommended?: boolean } | null;
+      if (!res.ok || data?.error || typeof data?.recommended !== 'boolean') {
+        setErrorMsg(data?.error ?? '추천을 처리하지 못했어요');
       } else {
-        const wasRecommended = recommended;
-        setRecommended(!wasRecommended);
-        setCount((c) => wasRecommended ? c - 1 : c + 1);
+        const nextRecommended = data.recommended;
+        setRecommended((wasRecommended) => {
+          if (wasRecommended !== nextRecommended) {
+            setCount((c) => Math.max(0, c + (nextRecommended ? 1 : -1)));
+          }
+          return nextRecommended;
+        });
       }
     } catch {
       setErrorMsg('네트워크 오류가 발생했어요');

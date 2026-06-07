@@ -1,15 +1,8 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { containsProfanity, containsPromoLink } from '@/lib/filter';
 import { awardReviewPoints, awardAttendanceStars } from '@/lib/points';
-
-function normalizeScore(score: number) {
-  if (!Number.isFinite(score)) return null;
-  const rounded = Math.round(score * 2) / 2;
-  if (rounded < 1 || rounded > 10) return null;
-  return rounded;
-}
+import { validateReplyInput, validateReviewInput } from '@/lib/review-validation';
 
 export async function createOrUpdateReview(
   webtoonId: string,
@@ -26,14 +19,8 @@ export async function createOrUpdateReview(
     .single();
   if (profileState?.is_suspended) return { error: '정지된 계정은 평점을 남길 수 없습니다' };
 
-  const safeScore = normalizeScore(score);
-  if (safeScore === null) return { error: '평점은 1.0점부터 10.0점까지 0.5점 단위로 입력해주세요' };
-
-  const trimmed = comment.trim().replace(/\s+/g, ' ');
-  if (trimmed.length === 1) return { error: '한줄평은 비우거나 2자 이상 입력해주세요' };
-  if (trimmed.length > 200) return { error: '한줄평은 200자 이하여야 합니다' };
-  if (trimmed && containsProfanity(trimmed)) return { error: '금지된 표현이 포함되어 있습니다' };
-  if (trimmed && containsPromoLink(trimmed)) return { error: '외부 링크나 홍보성 내용은 작성할 수 없습니다' };
+  const validation = validateReviewInput(score, comment);
+  if ('error' in validation) return { error: validation.error };
 
   const { data: existingReview } = await supabase
     .from('reviews')
@@ -43,13 +30,13 @@ export async function createOrUpdateReview(
     .maybeSingle();
 
   const { error } = await supabase.from('reviews').upsert(
-    { webtoon_id: webtoonId, user_id: user.id, score: safeScore, comment: trimmed },
+    { webtoon_id: webtoonId, user_id: user.id, score: validation.score, comment: validation.comment },
     { onConflict: 'webtoon_id,user_id' }
   );
 
   if (error) return { error: error.message };
 
-  await awardReviewPoints(supabase, user.id, existingReview?.comment, trimmed, webtoonId);
+  await awardReviewPoints(supabase, user.id, existingReview?.comment, validation.comment, webtoonId);
 
   return {};
 }
@@ -170,15 +157,23 @@ export async function createReply(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: '로그인이 필요합니다' };
 
-  const trimmed = comment.trim().replace(/\s+/g, ' ');
-  if (!trimmed) return { error: '내용을 입력해주세요' };
-  if (trimmed.length > 300) return { error: '300자 이하로 입력해주세요' };
-  if (containsProfanity(trimmed)) return { error: '금지된 표현이 포함되어 있습니다' };
-  if (containsPromoLink(trimmed)) return { error: '외부 링크나 홍보성 내용은 작성할 수 없습니다' };
+  const validation = validateReplyInput(comment);
+  if ('error' in validation) return { error: validation.error };
 
   const { error } = await supabase
     .from('review_replies')
-    .insert({ review_id: reviewId, user_id: user.id, comment: trimmed });
+    .insert({ review_id: reviewId, user_id: user.id, comment: validation.comment });
+
+  if (!error) {
+    const { error: pointError } = await supabase.rpc('award_points', {
+      p_user_id: user.id,
+      p_amount: 5,
+      p_reason: '댓글 작성',
+      p_unique_key: `reply:${user.id}:${reviewId}`,
+      p_metadata: { review_id: reviewId },
+    });
+    if (pointError) console.error('reply award_points failed', pointError);
+  }
 
   return error ? { error: error.message } : {};
 }

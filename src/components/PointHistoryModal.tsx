@@ -9,11 +9,7 @@ interface Transaction {
   created_at: string;
 }
 
-interface Props {
-  userId: string;
-}
-
-export default function PointHistoryModal({ userId }: Props) {
+export default function PointHistoryModal() {
   const [open, setOpen] = useState(false);
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,7 +37,7 @@ export default function PointHistoryModal({ userId }: Props) {
 
   useEffect(() => {
     if (open && txs.length === 0) loadMore(true);
-  }, [open]);
+  }, [loadMore, open, txs.length]);
 
   function formatDate(iso: string) {
     return iso.slice(0, 16).replace('T', ' ');

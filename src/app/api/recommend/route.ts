@@ -33,6 +33,9 @@ export async function POST(request: Request) {
       .select('user_id')
       .eq('id', reviewId)
       .single();
+    if (!review) {
+      return Response.json({ error: '한줄평을 찾을 수 없어요' }, { status: 404 });
+    }
     if (review?.user_id === user.id) {
       return Response.json({ error: '내 한줄평은 추천할 수 없어요' }, { status: 400 });
     }
@@ -40,6 +43,7 @@ export async function POST(request: Request) {
     const { error } = await supabase
       .from('recommends')
       .insert({ review_id: reviewId, user_id: user.id });
+    if (error?.code === '23505') return Response.json({ recommended: true });
     if (error) return Response.json({ error: error.message }, { status: 500 });
 
     return Response.json({ recommended: true });

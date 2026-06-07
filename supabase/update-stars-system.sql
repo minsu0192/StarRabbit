@@ -19,14 +19,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- 추천 취소 시 review.recommend_count - 1, profiles.total_recommends - 1, profiles.points - 10
+-- 추천 취소 시 review.recommend_count - 1, profiles.total_recommends - 1
+-- 이미 획득한 points는 유지한다.
 CREATE OR REPLACE FUNCTION public.handle_recommend_delete()
 RETURNS trigger AS $$
 BEGIN
   UPDATE public.reviews SET recommend_count = GREATEST(recommend_count - 1, 0) WHERE id = OLD.review_id;
   UPDATE public.profiles
-    SET total_recommends = GREATEST(total_recommends - 1, 0),
-        points = GREATEST(COALESCE(points, 0) - 10, 0)
+    SET total_recommends = GREATEST(total_recommends - 1, 0)
     WHERE id = (SELECT user_id FROM public.reviews WHERE id = OLD.review_id);
   RETURN OLD;
 END;

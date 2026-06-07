@@ -10,6 +10,11 @@ interface Reply {
   profiles: { nickname: string | null } | null;
 }
 
+interface ReplyResponse {
+  error?: string;
+  reply?: Reply;
+}
+
 interface Props {
   reviewId: string;
   initialReplies: Reply[];
@@ -22,6 +27,7 @@ export default function ReplySection({ reviewId, initialReplies, currentUserId, 
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -29,40 +35,50 @@ export default function ReplySection({ reviewId, initialReplies, currentUserId, 
     if (!text.trim() || submitting) return;
     setSubmitting(true);
     setError(null);
-    const res = await fetch('/api/reply', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reviewId, comment: text }),
-    });
-    const result = await res.json() as { error?: string };
-    setSubmitting(false);
-    if (result.error) {
-      setError(result.error);
-    } else {
-      setReplies((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          comment: text.trim(),
-          created_at: new Date().toISOString(),
-          user_id: currentUserId ?? '',
-          profiles: { nickname: '나' },
-        },
-      ]);
+    try {
+      const res = await fetch('/api/reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewId, comment: text }),
+      });
+      const result = await res.json().catch(() => null) as ReplyResponse | null;
+      if (!res.ok || result?.error) {
+        setError(result?.error ?? '댓글을 등록하지 못했어요');
+        return;
+      }
+
+      if (result?.reply) {
+        setReplies((prev) => [...prev, result.reply as Reply]);
+      }
       setText('');
       setOpen(false);
+    } catch {
+      setError('네트워크 오류가 발생했어요');
+    } finally {
+      setSubmitting(false);
     }
   }
 
   async function handleDelete(replyId: string) {
-    const res = await fetch('/api/reply', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ replyId }),
-    });
-    const result = await res.json() as { error?: string };
-    if (!result.error) {
+    if (deletingId) return;
+    setDeletingId(replyId);
+    setError(null);
+    try {
+      const res = await fetch('/api/reply', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ replyId }),
+      });
+      const result = await res.json().catch(() => null) as { error?: string } | null;
+      if (!res.ok || result?.error) {
+        setError(result?.error ?? '댓글을 삭제하지 못했어요');
+        return;
+      }
       setReplies((prev) => prev.filter((r) => r.id !== replyId));
+    } catch {
+      setError('네트워크 오류가 발생했어요');
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -79,7 +95,7 @@ export default function ReplySection({ reviewId, initialReplies, currentUserId, 
       </button>
 
       {(open || replyCount > 0) && (
-        <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-gray-100 dark:border-gray-800">
+        <div className="mt-2 space-y-2 rounded-lg bg-gray-50 px-2.5 py-2 dark:bg-gray-900/50">
           {replies.map((reply) => (
             <div key={reply.id} className="flex items-start gap-1.5 group">
               <div className="flex-1 min-w-0">
@@ -93,9 +109,10 @@ export default function ReplySection({ reviewId, initialReplies, currentUserId, 
               {reply.user_id === currentUserId && (
                 <button
                   onClick={() => handleDelete(reply.id)}
-                  className="shrink-0 text-[10px] text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  disabled={deletingId === reply.id}
+                  className="shrink-0 text-[10px] text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-40"
                 >
-                  삭제
+                  {deletingId === reply.id ? '...' : '삭제'}
                 </button>
               )}
             </div>
@@ -113,7 +130,7 @@ export default function ReplySection({ reviewId, initialReplies, currentUserId, 
               <button
                 type="submit"
                 disabled={!text.trim() || submitting}
-                className="shrink-0 rounded-md bg-amber-400 px-2.5 py-1 text-xs font-bold text-white disabled:opacity-40"
+                className="shrink-0 rounded-md bg-gray-900 px-2.5 py-1 text-xs font-bold text-white disabled:opacity-40 dark:bg-gray-100 dark:text-gray-950"
               >
                 {submitting ? '...' : '등록'}
               </button>

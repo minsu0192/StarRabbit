@@ -119,7 +119,7 @@ export default async function ProfilePage() {
               ? '최고 등급입니다'
               : `${pointLevel.nextLabel}까지 ${pointLevel.remaining.toLocaleString()} 스타 남음`}
           </p>
-          <PointHistoryModal userId={user.id} />
+          <PointHistoryModal />
         </div>
         <div className={`mt-4 flex items-center gap-2 rounded-xl border px-3 py-3 ${
           checkedToday

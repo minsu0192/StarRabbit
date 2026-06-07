@@ -70,15 +70,28 @@ GRANT EXECUTE ON FUNCTION public.award_points(uuid, int, text, text, jsonb) TO a
 -- ============================================================
 CREATE OR REPLACE FUNCTION public.handle_recommend_insert()
 RETURNS trigger AS $$
+DECLARE
+  v_review_owner uuid;
 BEGIN
   UPDATE public.reviews
   SET recommend_count = recommend_count + 1
-  WHERE id = NEW.review_id;
+  WHERE id = NEW.review_id
+  RETURNING user_id INTO v_review_owner;
 
   UPDATE public.profiles
   SET total_recommends = total_recommends + 1,
       points           = COALESCE(points, 0) + 10
-  WHERE id = (SELECT user_id FROM public.reviews WHERE id = NEW.review_id);
+  WHERE id = v_review_owner;
+
+  INSERT INTO public.point_transactions (user_id, amount, reason, unique_key, metadata)
+  VALUES (
+    v_review_owner,
+    10,
+    '추천 받기',
+    'recommend:' || NEW.id::text,
+    jsonb_build_object('review_id', NEW.review_id, 'from_user', NEW.user_id)
+  )
+  ON CONFLICT (unique_key) DO NOTHING;
 
   RETURN NEW;
 END;
@@ -86,15 +99,18 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.handle_recommend_delete()
 RETURNS trigger AS $$
+DECLARE
+  v_review_owner uuid;
 BEGIN
   UPDATE public.reviews
   SET recommend_count = GREATEST(recommend_count - 1, 0)
   WHERE id = OLD.review_id;
 
+  SELECT user_id INTO v_review_owner FROM public.reviews WHERE id = OLD.review_id;
+
   UPDATE public.profiles
-  SET total_recommends = GREATEST(total_recommends - 1, 0),
-      points           = GREATEST(COALESCE(points, 0) - 10, 0)
-  WHERE id = (SELECT user_id FROM public.reviews WHERE id = OLD.review_id);
+  SET total_recommends = GREATEST(total_recommends - 1, 0)
+  WHERE id = v_review_owner;
 
   RETURN OLD;
 END;

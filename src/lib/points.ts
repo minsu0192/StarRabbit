@@ -5,6 +5,7 @@ type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 export const POINT_RULES = [
   { label: '출석 체크', points: 50, description: '하루 1회' },
   { label: '추천 받기', points: 10, description: '내 한줄평에 추천 1개당' },
+  { label: '댓글 작성', points: 5, description: '한줄평당 최초 1회' },
   { label: '주간랭킹 1위', points: 500, description: '그 주 받은 추천수 1위' },
   { label: '주간랭킹 2위', points: 400, description: '그 주 받은 추천수 2위' },
   { label: '주간랭킹 3위', points: 300, description: '그 주 받은 추천수 3위' },
@@ -43,17 +44,28 @@ export function reviewPointValue(comment: string | null | undefined) {
   return String(comment ?? '').trim() ? 15 : 5;
 }
 
+function todayInKst() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 export async function awardReviewPoints(
   supabase: ServerSupabaseClient,
   userId: string,
   previousComment: string | null | undefined,
   nextComment: string,
   webtoonId?: string,
-) {
+): Promise<{ awarded: boolean; error?: string }> {
   const previousPoints = previousComment === undefined ? 0 : reviewPointValue(previousComment);
   const nextPoints = reviewPointValue(nextComment);
   const delta = Math.max(nextPoints - previousPoints, 0);
-  if (delta <= 0) return;
+  if (delta <= 0) return { awarded: false };
 
   const reason = nextPoints === 15 && previousPoints === 5
     ? '한줄평 추가 작성'
@@ -63,22 +75,29 @@ export async function awardReviewPoints(
 
   const uniqueKey = `review:${userId}:${webtoonId ?? 'unknown'}:${reason}`;
 
-  await supabase.rpc('award_points', {
+  const { data, error } = await supabase.rpc('award_points', {
     p_user_id: userId,
     p_amount: delta,
     p_reason: reason,
     p_unique_key: uniqueKey,
     p_metadata: webtoonId ? { webtoon_id: webtoonId } : {},
   });
+
+  if (error) {
+    console.error('awardReviewPoints failed', error);
+    return { awarded: false, error: error.message };
+  }
+
+  return { awarded: data === true };
 }
 
 export async function awardAttendanceStars(
   supabase: ServerSupabaseClient,
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const today = todayInKst();
 
-  const { data: result } = await supabase
+  const { data: result, error: awardError } = await supabase
     .rpc('award_points', {
       p_user_id: userId,
       p_amount: 50,
@@ -87,14 +106,23 @@ export async function awardAttendanceStars(
       p_metadata: { date: today },
     });
 
+  if (awardError) {
+    console.error('awardAttendanceStars failed', awardError);
+    return { success: false, error: '출석 체크를 처리하지 못했어요' };
+  }
+
   if (result === false) {
     return { success: false, error: '오늘은 이미 출석 체크를 했어요' };
   }
 
-  await supabase
+  const { error: updateError } = await supabase
     .from('profiles')
     .update({ last_attendance_at: new Date().toISOString() })
     .eq('id', userId);
+
+  if (updateError) {
+    console.error('last_attendance_at update failed', updateError);
+  }
 
   return { success: true };
 }

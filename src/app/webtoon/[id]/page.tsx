@@ -82,6 +82,7 @@ export default async function WebtoonDetailPage({ params }: Props) {
   }));
   const maxCount = Math.max(...scoreDistribution.map((d) => d.count), 1);
   const diagnosis = getDiagnosis(webtoon);
+  const commentCount = reviews.filter((review) => String(review.comment ?? '').trim()).length;
 
   // 베스트 3 (추천 많은 순, 추천 1개 이상)
   const bestReviews = [...reviews]
@@ -115,17 +116,17 @@ export default async function WebtoonDetailPage({ params }: Props) {
         <LoginButton user={userInfo} compact />
       </header>
 
-      <section className="px-4 pt-6 pb-5 border-b border-gray-100 dark:border-gray-900">
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
+      <section className="px-4 pt-6 pb-5 border-b border-gray-100 bg-gray-50/60 dark:border-gray-900 dark:bg-gray-950/40">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
           <PlatformBadges platforms={webtoon.sources.map((source) => source.platform)} />
           {webtoon.genre && (
-            <span className="text-xs text-gray-400 dark:text-gray-500">{webtoon.genre}</span>
+            <span className="rounded-md bg-white px-2 py-1 text-xs font-medium text-gray-500 ring-1 ring-gray-100 dark:bg-gray-950 dark:text-gray-400 dark:ring-gray-800">{webtoon.genre}</span>
           )}
           {webtoon.status && (
-            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+            <span className={`rounded-md px-2 py-1 text-xs font-bold ${
               webtoon.status === 'completed'
-                ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
-                : 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400'
+                ? 'bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
+                : 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-900'
             }`}>
               {webtoon.status === 'completed' ? '완결' : '연재중'}
             </span>
@@ -152,12 +153,13 @@ export default async function WebtoonDetailPage({ params }: Props) {
       </section>
 
       <section className="px-4 py-5 border-b border-gray-100 dark:border-gray-900">
-        <div className="flex items-center gap-4">
-          <div className="text-center shrink-0">
-            <div className="text-4xl font-black tabular-nums leading-none mb-1">
-              {webtoon.avg_score !== null ? webtoon.avg_score.toFixed(1) : '−'}
+        <div className="grid grid-cols-[minmax(92px,112px)_1fr] gap-4">
+          <div className="rounded-lg border border-gray-100 bg-white p-3 text-center shadow-sm dark:border-gray-900 dark:bg-gray-950">
+            <div className="mb-1 text-[11px] font-bold text-gray-400">평균 평점</div>
+            <div className="text-4xl font-black tabular-nums leading-none">
+              {webtoon.avg_score !== null ? webtoon.avg_score.toFixed(1) : '-'}
             </div>
-            <div className="text-xs text-gray-400">{webtoon.review_count.toLocaleString()}명 평가</div>
+            <div className="mt-2 text-xs text-gray-400">{webtoon.review_count.toLocaleString()}명 평가</div>
           </div>
 
           {webtoon.review_count > 0 && (
@@ -167,7 +169,7 @@ export default async function WebtoonDetailPage({ params }: Props) {
                   <span className="text-[10px] text-gray-400 w-3 tabular-nums">{score}</span>
                   <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-amber-400"
+                      className="h-full rounded-full bg-sky-400"
                       style={{ width: `${(count / maxCount) * 100}%` }}
                     />
                   </div>
@@ -176,6 +178,21 @@ export default async function WebtoonDetailPage({ params }: Props) {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="rounded-lg border border-gray-100 px-3 py-2 dark:border-gray-900">
+            <div className="text-[10px] font-bold text-gray-400">한줄평</div>
+            <div className="mt-0.5 text-sm font-black tabular-nums">{commentCount.toLocaleString()}</div>
+          </div>
+          <div className="rounded-lg border border-gray-100 px-3 py-2 dark:border-gray-900">
+            <div className="text-[10px] font-bold text-gray-400">베스트</div>
+            <div className="mt-0.5 text-sm font-black tabular-nums">{bestReviews.length}</div>
+          </div>
+          <div className="rounded-lg border border-gray-100 px-3 py-2 dark:border-gray-900">
+            <div className="text-[10px] font-bold text-gray-400">플랫폼</div>
+            <div className="mt-0.5 text-sm font-black tabular-nums">{webtoon.sources.length}</div>
+          </div>
         </div>
 
         {diagnosis && (
@@ -197,7 +214,7 @@ export default async function WebtoonDetailPage({ params }: Props) {
         )}
       </section>
 
-      <section className="flex-1 px-0">
+      <section className="flex-1 bg-gray-50/50 px-0 dark:bg-gray-950/30">
         <div className="px-4 py-3">
           <h2 className="text-sm font-bold">
             평가{reviews.length > 0 ? ` (${reviews.length})` : ''}
@@ -213,7 +230,7 @@ export default async function WebtoonDetailPage({ params }: Props) {
           <>
             {bestReviews.length > 0 && (
               <div className="px-4 pb-3">
-                <p className="text-[11px] font-bold text-amber-500 mb-2">★ 베스트 댓글</p>
+                <p className="mb-2 text-[11px] font-black text-gray-500">베스트 한줄평</p>
                 <ul className="grid gap-2">
                   {bestReviews.map((review) => (
                     <ReviewItem
@@ -230,7 +247,7 @@ export default async function WebtoonDetailPage({ params }: Props) {
                 </ul>
               </div>
             )}
-            <ul className="divide-y divide-gray-100 dark:divide-gray-900">
+            <ul className="grid gap-2 px-4 pb-4">
               {restReviews.map((review) => (
                 <ReviewItem
                   key={review.id}
@@ -282,21 +299,24 @@ function ReviewItem({
   const tier = getPointLevel(points);
 
   return (
-    <li className={isBest ? 'rounded-xl border border-amber-100 bg-amber-50/50 px-3 py-3 dark:border-amber-900/40 dark:bg-amber-950/10' : 'px-4 py-3.5'}>
+    <li className={isBest ? 'rounded-lg border border-amber-200 bg-white px-3 py-3 shadow-sm dark:border-amber-900/60 dark:bg-gray-950' : 'rounded-lg border border-gray-100 bg-white px-3 py-3 shadow-sm dark:border-gray-900 dark:bg-gray-950'}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1 flex-wrap">
             <TierBunny tier={tier.label} size={22} />
             <span className="text-sm font-semibold">{review.profiles?.nickname ?? '익명'}</span>
             <span className={`text-[10px] font-medium ${tier.color}`}>{tier.label}</span>
+            {isBest && (
+              <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-700 dark:bg-amber-950 dark:text-amber-300">BEST</span>
+            )}
             {isOwn && (
-              <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-black text-white">나</span>
+              <span className="rounded-md bg-gray-900 px-1.5 py-0.5 text-[9px] font-black text-white dark:bg-gray-100 dark:text-gray-950">나</span>
             )}
           </div>
           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">
             {review.comment || '별점만 남겼어요'}
           </p>
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
             <span className="text-[11px] text-gray-400 dark:text-gray-500">{formatDate(review.created_at)}</span>
             <span className="text-[11px] text-gray-300 dark:text-gray-700">·</span>
             <ReportButton reviewId={review.id} />
