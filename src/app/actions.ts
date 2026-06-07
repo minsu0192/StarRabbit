@@ -158,6 +158,43 @@ export async function toggleRecommend(
   return error ? { error: error.message } : {};
 }
 
+export async function createReply(
+  reviewId: string,
+  comment: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: '로그인이 필요합니다' };
+
+  const trimmed = comment.trim().replace(/\s+/g, ' ');
+  if (!trimmed) return { error: '내용을 입력해주세요' };
+  if (trimmed.length > 300) return { error: '300자 이하로 입력해주세요' };
+  if (containsProfanity(trimmed)) return { error: '금지된 표현이 포함되어 있습니다' };
+  if (containsPromoLink(trimmed)) return { error: '외부 링크나 홍보성 내용은 작성할 수 없습니다' };
+
+  const { error } = await supabase
+    .from('review_replies')
+    .insert({ review_id: reviewId, user_id: user.id, comment: trimmed });
+
+  return error ? { error: error.message } : {};
+}
+
+export async function deleteReply(
+  replyId: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: '로그인이 필요합니다' };
+
+  const { error } = await supabase
+    .from('review_replies')
+    .delete()
+    .eq('id', replyId)
+    .eq('user_id', user.id);
+
+  return error ? { error: error.message } : {};
+}
+
 export async function reportReview(
   reviewId: string,
   reason: string

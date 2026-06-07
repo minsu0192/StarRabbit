@@ -13,6 +13,7 @@ import LoginButton from '@/components/LoginButton';
 import ReviewForm from '@/components/ReviewForm';
 import ReportButton from '@/components/ReportButton';
 import RecommendButton from '@/components/RecommendButton';
+import ReplySection from '@/components/ReplySection';
 import SiteFooter from '@/components/SiteFooter';
 import { getDiagnosis } from '@/lib/diagnosis';
 import { getPointLevel } from '@/lib/points';
@@ -39,15 +40,34 @@ export default async function WebtoonDetailPage({ params }: Props) {
 
   if (!webtoon) notFound();
 
-  // 현재 유저가 추천한 리뷰 ID 목록
-  const myRecommendedIds = user && reviews.length > 0
-    ? await supabase
-        .from('recommends')
-        .select('review_id')
-        .eq('user_id', user.id)
-        .in('review_id', reviews.map((r) => r.id))
-        .then(({ data }) => new Set((data ?? []).map((r) => r.review_id)))
-    : new Set<string>();
+  // 현재 유저가 추천한 리뷰 ID 목록 + 댓글
+  const reviewIds = reviews.map((r) => r.id);
+
+  const [myRecommendedIds, repliesData] = await Promise.all([
+    user && reviewIds.length > 0
+      ? supabase
+          .from('recommends')
+          .select('review_id')
+          .eq('user_id', user.id)
+          .in('review_id', reviewIds)
+          .then(({ data }) => new Set((data ?? []).map((r) => r.review_id)))
+      : Promise.resolve(new Set<string>()),
+    reviewIds.length > 0
+      ? supabase
+          .from('review_replies')
+          .select('id, review_id, comment, created_at, user_id, profiles(nickname)')
+          .in('review_id', reviewIds)
+          .order('created_at', { ascending: true })
+          .then(({ data }) => data ?? [])
+      : Promise.resolve([]),
+  ]);
+
+  // review_id별 댓글 맵
+  type ReplyRow = { id: string; review_id: string; comment: string; created_at: string; user_id: string; profiles: { nickname: string | null } | null };
+  const repliesByReview = (repliesData as ReplyRow[]).reduce<Record<string, ReplyRow[]>>((acc, r) => {
+    (acc[r.review_id] ??= []).push(r);
+    return acc;
+  }, {});
 
   const userInfo = user
     ? {
@@ -202,6 +222,8 @@ export default async function WebtoonDetailPage({ params }: Props) {
                       isRecommended={myRecommendedIds.has(review.id)}
                       canRecommend={!!user && review.user_id !== user?.id}
                       isOwn={user?.id === review.user_id}
+                      currentUserId={user?.id ?? null}
+                      replies={repliesByReview[review.id] ?? []}
                       isBest
                     />
                   ))}
@@ -216,6 +238,8 @@ export default async function WebtoonDetailPage({ params }: Props) {
                   isRecommended={myRecommendedIds.has(review.id)}
                   canRecommend={!!user && review.user_id !== user?.id}
                   isOwn={user?.id === review.user_id}
+                  currentUserId={user?.id ?? null}
+                  replies={repliesByReview[review.id] ?? []}
                 />
               ))}
             </ul>
@@ -243,12 +267,16 @@ function ReviewItem({
   canRecommend = false,
   isOwn = false,
   isBest = false,
+  currentUserId = null,
+  replies = [],
 }: {
   review: ReviewWithProfile;
   isRecommended?: boolean;
   canRecommend?: boolean;
   isOwn?: boolean;
   isBest?: boolean;
+  currentUserId?: string | null;
+  replies?: { id: string; review_id: string; comment: string; created_at: string; user_id: string; profiles: { nickname: string | null } | null }[];
 }) {
   const points = review.profiles?.points ?? review.profiles?.total_recommends ?? 0;
   const tier = getPointLevel(points);
@@ -273,6 +301,12 @@ function ReviewItem({
             <span className="text-[11px] text-gray-300 dark:text-gray-700">·</span>
             <ReportButton reviewId={review.id} />
           </div>
+          <ReplySection
+            reviewId={review.id}
+            initialReplies={replies}
+            currentUserId={currentUserId}
+            canReply={!!currentUserId}
+          />
         </div>
         <div className="shrink-0 flex flex-col items-center gap-2">
           <ScoreBadge score={review.score} size="sm" />

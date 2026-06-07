@@ -13,10 +13,19 @@ export default async function Header() {
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('nickname')
+      .select('nickname, last_attendance_at')
       .eq('id', user.id)
       .single();
     if (profile?.nickname) nickname = profile.nickname;
+
+    // 오늘 출석 체크 안 했으면 자동 지급
+    const today = new Date().toISOString().slice(0, 10);
+    const lastDate = profile?.last_attendance_at
+      ? (profile.last_attendance_at as string).slice(0, 10)
+      : null;
+    if (lastDate !== today) {
+      await supabase.rpc('auto_attend', { p_user_id: user.id });
+    }
   }
 
   const userInfo = user

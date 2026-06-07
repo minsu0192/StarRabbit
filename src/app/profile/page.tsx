@@ -8,7 +8,6 @@ import NicknameForm from '@/components/NicknameForm';
 import ScoreBadge from '@/components/ScoreBadge';
 import BunnyMascot from '@/components/BunnyMascot';
 import TierBunny from '@/components/TierBunny';
-import AttendanceButton from '@/components/AttendanceButton';
 import { POINT_LEVELS, POINT_RULES, getPointLevel } from '@/lib/points';
 
 function getRank(total: number): { label: string; color: string; next: string; needed: number | null } {
@@ -38,11 +37,22 @@ export default async function ProfilePage() {
     : { data: null };
   const profile = profileWithPoints ?? profileFallback;
 
-  const { data: reviews } = await supabase
-    .from('reviews')
-    .select('*, webtoons(title, platform)')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
+  const [reviewsResult, pointHistoryResult] = await Promise.all([
+    supabase
+      .from('reviews')
+      .select('*, webtoons(title, platform)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('point_transactions')
+      .select('id, amount, reason, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(30),
+  ]);
+
+  const reviews = reviewsResult.data;
+  const pointHistory = pointHistoryResult.data ?? [];
 
   const nickname = profile?.nickname ?? '유저';
   const totalRecommends = profile?.total_recommends ?? 0;
@@ -84,7 +94,7 @@ export default async function ProfilePage() {
         </div>
       </section>
 
-      {/* 스타 & 출석체크 */}
+      {/* 스타 */}
       <section className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
         <div className="mb-3 flex items-end justify-between gap-3">
           <div>
@@ -104,11 +114,44 @@ export default async function ProfilePage() {
             ? '최고 등급입니다'
             : `${pointLevel.nextLabel}까지 ${pointLevel.remaining.toLocaleString()} 스타 남음`}
         </p>
-        <div className="mt-4 flex items-center gap-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-3 dark:border-amber-900 dark:bg-amber-950/20">
-          <span className="text-xs text-amber-700 dark:text-amber-400 flex-1">오늘 출석 체크하고 50 스타 받기</span>
-          <AttendanceButton checkedToday={checkedToday} />
+        <div className={`mt-4 flex items-center gap-2 rounded-xl border px-3 py-3 ${
+          checkedToday
+            ? 'border-green-100 bg-green-50 dark:border-green-900 dark:bg-green-950/20'
+            : 'border-amber-100 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20'
+        }`}>
+          {checkedToday ? (
+            <>
+              <span className="text-lg">✓</span>
+              <span className="text-xs font-bold text-green-600 dark:text-green-400">오늘 출석 완료! +50 스타 획득</span>
+            </>
+          ) : (
+            <>
+              <span className="text-lg">☀️</span>
+              <span className="text-xs text-amber-700 dark:text-amber-400">오늘 사이트를 방문하면 +50 스타가 자동으로 지급돼요</span>
+            </>
+          )}
         </div>
       </section>
+
+      {/* 스타 히스토리 */}
+      {pointHistory.length > 0 && (
+        <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+          <h2 className="text-sm font-bold mb-3">스타 획득 내역</h2>
+          <ul className="divide-y divide-gray-100 dark:divide-gray-900 rounded-md border border-gray-100 dark:border-gray-900 overflow-hidden">
+            {pointHistory.map((tx) => (
+              <li key={tx.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{tx.reason}</p>
+                  <p className="text-[11px] text-gray-400">{(tx.created_at as string).slice(0, 10).replace(/-/g, '.')}</p>
+                </div>
+                <span className={`text-sm font-black tabular-nums shrink-0 ${tx.amount > 0 ? 'text-amber-500' : 'text-red-400'}`}>
+                  {tx.amount > 0 ? '+' : ''}{tx.amount} ★
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
         <h2 className="text-sm font-bold mb-3">스타 획득 방법</h2>
