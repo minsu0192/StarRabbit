@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { toggleRecommend } from '@/app/actions';
 
 interface Props {
   reviewId: string;
@@ -21,16 +20,21 @@ export default function RecommendButton({ reviewId, initialCount, initialRecomme
     setLoading(true);
     setErrorMsg(null);
     try {
-      const result = await toggleRecommend(reviewId);
-      if (result.error) {
-        setErrorMsg(result.error);
+      const res = await fetch('/api/recommend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewId }),
+      });
+      const data = await res.json() as { error?: string; recommended?: boolean };
+      if (data.error) {
+        setErrorMsg(data.error);
       } else {
         const wasRecommended = recommended;
         setRecommended(!wasRecommended);
         setCount((c) => wasRecommended ? c - 1 : c + 1);
       }
     } catch {
-      setErrorMsg('오류가 발생했어요. 다시 시도해주세요');
+      setErrorMsg('네트워크 오류가 발생했어요');
     } finally {
       setLoading(false);
     }
