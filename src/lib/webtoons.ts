@@ -247,10 +247,84 @@ export async function getWebtoons(
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
   const from = (safePage - 1) * safeLimit;
   const to = from + safeLimit - 1;
-
-  // PostgREST REST API 직접 호출 — Supabase 클라이언트 권한 문제 완전 우회
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const apiKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  // 기본순/인기순은 DB의 리뷰 수 캐시로 직접 페이지네이션한다.
+  // 전체 작품을 Worker 메모리로 가져오지 않으므로 뒤쪽 페이지도 유지되고 CPU 사용도 작다.
+  if ((sort === 'featured' || sort === 'popular') && !origin) {
+    const selectClause = platform && VALID_PLATFORMS.includes(platform)
+      ? `*, webtoon_sources!inner(*)`
+      : `*, webtoon_sources(*)`;
+    let pageQuery = supabase
+      .from('webtoons')
+      .select(selectClause, { count: 'exact' });
+
+    if (platform && VALID_PLATFORMS.includes(platform)) {
+      pageQuery = pageQuery.eq('webtoon_sources.platform', platform);
+    }
+    if (status && VALID_STATUSES.includes(status)) pageQuery = pageQuery.eq('status', status);
+    if (genre && VALID_GENRES.includes(genre)) pageQuery = pageQuery.eq('genre', genre);
+    pageQuery = applyInitialFilter(pageQuery, initial);
+    pageQuery = pageQuery
+      .order('cached_review_count', { ascending: false })
+      .order('title', { ascending: true })
+      .range(from, to);
+
+    let pageResult = await pageQuery;
+    if (pageResult.error?.message?.includes('webtoon_sources')) {
+      let fallback = supabase.from('webtoons').select('*', { count: 'exact' });
+      if (status && VALID_STATUSES.includes(status)) fallback = fallback.eq('status', status);
+      if (genre && VALID_GENRES.includes(genre)) fallback = fallback.eq('genre', genre);
+      fallback = applyInitialFilter(fallback, initial);
+      pageResult = await fallback
+        .order('cached_review_count', { ascending: false })
+        .order('title', { ascending: true })
+        .range(from, to);
+    }
+
+    if (pageResult.error || !pageResult.data) {
+      return { items: [], total: 0, page: safePage, limit: safeLimit };
+    }
+
+    const pageIds = pageResult.data.map((row) => row.id);
+    const idsParam = pageIds.map((id) => `"${id}"`).join(',');
+    const reviewRows = pageIds.length === 0
+      ? []
+      : await fetch(
+          `${supabaseUrl}/rest/v1/reviews?select=webtoon_id,score,created_at,comment&webtoon_id=in.(${idsParam})`,
+          { headers: { apikey: apiKey, Authorization: `Bearer ${apiKey}` }, cache: 'no-store' },
+        )
+          .then(async (response) => response.ok
+            ? await response.json() as { webtoon_id: string; score: string | number; created_at: string | null; comment: string | null }[]
+            : [])
+          .catch(() => []);
+
+    const pageReviewMap = new Map<string, ReviewStat[]>();
+    for (const review of reviewRows) {
+      const list = pageReviewMap.get(review.webtoon_id) ?? [];
+      list.push({
+        score: Number(review.score),
+        created_at: review.created_at ?? undefined,
+        comment: review.comment,
+      });
+      pageReviewMap.set(review.webtoon_id, list);
+    }
+
+    const items = pageResult.data.map((webtoon) => withStats({
+      ...webtoon,
+      reviews: pageReviewMap.get(webtoon.id) ?? [],
+    }));
+
+    return {
+      items,
+      total: pageResult.count ?? 0,
+      page: safePage,
+      limit: safeLimit,
+    };
+  }
+
+  // PostgREST REST API 직접 호출 — Supabase 클라이언트 권한 문제 완전 우회
   const reviewsPromise = fetch(
     `${supabaseUrl}/rest/v1/reviews?select=webtoon_id,score,created_at,comment`,
     {
@@ -540,24 +614,36 @@ export async function searchWebtoons(query: string): Promise<WebtoonWithStats[]>
   const safeQuery = escapePostgrestPattern(query);
   if (!safeQuery) return [];
 
-  const { data, error } = await supabase
-    .from('webtoons')
-    .select(`*, webtoon_sources(*)`)
-    .or(`title.ilike.%${safeQuery}%,author.ilike.%${safeQuery}%`)
-    .order('title', { ascending: true })
-    .limit(SEARCH_LIMIT);
-
-  let rows = data ?? [];
-
-  if (error?.message?.includes('webtoon_sources')) {
-    const fallback = await supabase
+  const [exactResult, broadResult] = await Promise.all([
+    supabase
       .from('webtoons')
-      .select('*')
+      .select(`*, webtoon_sources(*)`)
+      .ilike('title', safeQuery)
+      .limit(10),
+    supabase
+      .from('webtoons')
+      .select(`*, webtoon_sources(*)`)
       .or(`title.ilike.%${safeQuery}%,author.ilike.%${safeQuery}%`)
       .order('title', { ascending: true })
-      .limit(SEARCH_LIMIT);
+      .limit(SEARCH_LIMIT),
+  ]);
+
+  let rows = mergeById(exactResult.data ?? [], broadResult.data ?? []);
+  const error = broadResult.error;
+
+  if (error?.message?.includes('webtoon_sources')) {
+    const [exactFallback, broadFallback] = await Promise.all([
+      supabase.from('webtoons').select('*').ilike('title', safeQuery).limit(10),
+      supabase
+        .from('webtoons')
+        .select('*')
+        .or(`title.ilike.%${safeQuery}%,author.ilike.%${safeQuery}%`)
+        .order('title', { ascending: true })
+        .limit(SEARCH_LIMIT),
+    ]);
+    const fallback = broadFallback;
     if (fallback.error || !fallback.data) return [];
-    rows = fallback.data;
+    rows = mergeById(exactFallback.data ?? [], fallback.data);
   } else if (error) {
     return [];
   }
@@ -602,8 +688,16 @@ export async function searchWebtoons(query: string): Promise<WebtoonWithStats[]>
     reviewMap.set(r.webtoon_id, list);
   }
 
+  const normalizedQuery = safeQuery.toLocaleLowerCase('ko');
+
   return [...byId.values()]
     .map((w) => withStats({ ...w, reviews: reviewMap.get(w.id) ?? [] }))
-    .sort((a, b) => a.title.localeCompare(b.title, 'ko'))
+    .sort((a, b) => {
+      const aTitle = a.title.toLocaleLowerCase('ko');
+      const bTitle = b.title.toLocaleLowerCase('ko');
+      const aRank = aTitle === normalizedQuery ? 0 : aTitle.startsWith(normalizedQuery) ? 1 : 2;
+      const bRank = bTitle === normalizedQuery ? 0 : bTitle.startsWith(normalizedQuery) ? 1 : 2;
+      return aRank - bRank || a.title.localeCompare(b.title, 'ko');
+    })
     .slice(0, SEARCH_LIMIT);
 }
