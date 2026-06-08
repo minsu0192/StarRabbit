@@ -11,7 +11,7 @@ export default function TermsPage() {
 
       <main className="flex-1 px-5 py-8 prose prose-sm dark:prose-invert max-w-none">
         <h1 className="text-xl font-black mb-1">이용약관</h1>
-        <p className="text-xs text-gray-400 mb-8">최종 수정일: 2026년 6월 5일</p>
+        <p className="text-xs text-gray-400 mb-8">최종 수정일: 2026년 6월 8일</p>
 
         <Section title="제1조 (목적)">
           이 약관은 별토끼(이하 &quot;서비스&quot;)의 이용 조건과 절차, 이용자와 운영자 간의 권리·의무를 규정합니다.
@@ -80,14 +80,32 @@ export default function TermsPage() {
           </ol>
         </Section>
 
-        <Section title="제9조 (서비스 변경·중단)">
+        <Section title="제9조 (플랫폼 비제휴 및 표시 정보)">
+          <ol>
+            <li>별토끼는 네이버웹툰, 카카오페이지, 카카오웹툰, 리디 등 각 웹툰 플랫폼 및 작품 권리자와 공식 제휴·후원·승인 관계에 있는 서비스가 아닙니다.</li>
+            <li>서비스에 표시되는 작품명, 작가명, 플랫폼명과 관련 표지는 리뷰 대상 식별 및 정보 제공 목적으로만 사용됩니다.</li>
+            <li>각 작품과 플랫폼에 관한 상표권·저작권 및 기타 권리는 해당 권리자에게 있습니다.</li>
+          </ol>
+        </Section>
+
+        <Section title="제10조 (권리침해 신고 및 임시조치)">
+          <ol>
+            <li>저작권, 상표권, 명예, 개인정보 등 권리침해를 주장하는 자는 대상 게시물, 권리 관계, 침해 사유와 연락처를 운영자 이메일로 제출할 수 있습니다.</li>
+            <li>운영자는 신고 내용을 검토하여 필요한 경우 해당 게시물의 노출을 중단하거나 삭제할 수 있습니다.</li>
+            <li>게시물 작성자는 운영자 이메일을 통해 소명자료와 함께 이의신청을 할 수 있습니다.</li>
+            <li>운영자는 신고자와 작성자의 자료, 관련 법령 및 서비스 정책을 검토하여 게시물의 복원·삭제 또는 제한 유지 여부를 결정합니다.</li>
+          </ol>
+          <p>권리침해 신고 및 이의신청: <a href="mailto:minsu0192@gmail.com" className="underline">minsu0192@gmail.com</a></p>
+        </Section>
+
+        <Section title="제11조 (서비스 변경·중단)">
           <ol>
             <li>운영자는 서비스 내용을 변경하거나 중단할 수 있습니다.</li>
             <li>서비스 중단 시 30일 전 공지하는 것을 원칙으로 하되, 불가피한 경우 즉시 중단할 수 있습니다.</li>
           </ol>
         </Section>
 
-        <Section title="제10조 (면책 조항)">
+        <Section title="제12조 (면책 조항)">
           <ol>
             <li>운영자는 천재지변, 서비스 장애, 제3자의 귀책 사유로 인한 손해에 대해 책임을 지지 않습니다.</li>
             <li>운영자는 회원이 작성한 콘텐츠의 정확성·신뢰성에 대해 보장하지 않습니다.</li>
@@ -95,7 +113,7 @@ export default function TermsPage() {
           </ol>
         </Section>
 
-        <Section title="제11조 (준거법 및 관할)">
+        <Section title="제13조 (준거법 및 관할)">
           이 약관은 대한민국 법률에 따르며, 분쟁 발생 시 운영자 소재지 법원을 관할 법원으로 합니다.
         </Section>
 
