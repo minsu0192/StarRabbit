@@ -288,10 +288,121 @@ export async function getWebtoons(
       }
     }
     if (pageResult.error) {
-      pageResult = await runPageQuery(true, 'none');
-      if (pageResult.error?.message?.includes('webtoon_sources')) {
-        pageResult = await runPageQuery(false, 'none');
+      const reviewRows = await fetch(
+        `${supabaseUrl}/rest/v1/reviews?select=webtoon_id,score`,
+        { headers: { apikey: apiKey, Authorization: `Bearer ${apiKey}` }, cache: 'no-store' },
+      )
+        .then(async (response) => response.ok
+          ? await response.json() as { webtoon_id: string; score: string | number }[]
+          : [])
+        .catch(() => []);
+
+      const reviewMap = new Map<string, ReviewStat[]>();
+      for (const review of reviewRows) {
+        const list = reviewMap.get(review.webtoon_id) ?? [];
+        list.push({ score: Number(review.score) });
+        reviewMap.set(review.webtoon_id, list);
       }
+
+      const reviewedIds = [...reviewMap.keys()];
+      const reviewedRows: WebtoonRowData[] = [];
+      for (let i = 0; i < reviewedIds.length; i += 200) {
+        const ids = reviewedIds.slice(i, i + 200);
+        let reviewedQuery = supabase
+          .from('webtoons')
+          .select(platform && VALID_PLATFORMS.includes(platform)
+            ? `*, webtoon_sources!inner(*)`
+            : `*, webtoon_sources(*)`)
+          .in('id', ids);
+        if (platform && VALID_PLATFORMS.includes(platform)) {
+          reviewedQuery = reviewedQuery.eq('webtoon_sources.platform', platform);
+        }
+        if (status && VALID_STATUSES.includes(status)) reviewedQuery = reviewedQuery.eq('status', status);
+        if (genre && VALID_GENRES.includes(genre)) reviewedQuery = reviewedQuery.eq('genre', genre);
+        reviewedQuery = applyInitialFilter(reviewedQuery, initial);
+        let reviewedResult = await reviewedQuery;
+        if (reviewedResult.error?.message?.includes('webtoon_sources')) {
+          let fallback = supabase.from('webtoons').select('*').in('id', ids);
+          if (status && VALID_STATUSES.includes(status)) fallback = fallback.eq('status', status);
+          if (genre && VALID_GENRES.includes(genre)) fallback = fallback.eq('genre', genre);
+          fallback = applyInitialFilter(fallback, initial);
+          reviewedResult = await fallback;
+        }
+        if (reviewedResult.data) reviewedRows.push(...reviewedResult.data as WebtoonRowData[]);
+      }
+
+      let countQuery = supabase
+        .from('webtoons')
+        .select(platform && VALID_PLATFORMS.includes(platform) ? `id, webtoon_sources!inner(*)` : 'id', {
+          count: 'exact',
+          head: true,
+        });
+      if (platform && VALID_PLATFORMS.includes(platform)) {
+        countQuery = countQuery.eq('webtoon_sources.platform', platform);
+      }
+      if (status && VALID_STATUSES.includes(status)) countQuery = countQuery.eq('status', status);
+      if (genre && VALID_GENRES.includes(genre)) countQuery = countQuery.eq('genre', genre);
+      countQuery = applyInitialFilter(countQuery, initial);
+      let countResult: { count: number | null; error: { message?: string } | null } = await countQuery;
+      if (countResult.error?.message?.includes('webtoon_sources')) {
+        let fallbackCount = supabase.from('webtoons').select('id', { count: 'exact', head: true });
+        if (status && VALID_STATUSES.includes(status)) fallbackCount = fallbackCount.eq('status', status);
+        if (genre && VALID_GENRES.includes(genre)) fallbackCount = fallbackCount.eq('genre', genre);
+        fallbackCount = applyInitialFilter(fallbackCount, initial);
+        countResult = await fallbackCount;
+      }
+
+      const reviewedItems = reviewedRows
+        .map((webtoon) => withStats({ ...webtoon, reviews: reviewMap.get(webtoon.id) ?? [] }))
+        .sort((a, b) => b.review_count - a.review_count || (b.avg_score ?? -1) - (a.avg_score ?? -1) || a.title.localeCompare(b.title, 'ko'));
+
+      const pageItems = reviewedItems.slice(from, to + 1);
+      if (pageItems.length < safeLimit) {
+        const reviewedSet = new Set(reviewedItems.map((webtoon) => webtoon.id));
+        const needed = safeLimit - pageItems.length;
+        const skipUnreviewed = Math.max(0, from - reviewedItems.length);
+        const unreviewed: WebtoonRowData[] = [];
+        let scanned = 0;
+        let offset = 0;
+        while (unreviewed.length < needed && offset < LIST_CANDIDATE_LIMIT) {
+          let fillQuery = supabase
+            .from('webtoons')
+            .select(platform && VALID_PLATFORMS.includes(platform)
+              ? `*, webtoon_sources!inner(*)`
+              : `*, webtoon_sources(*)`);
+          if (platform && VALID_PLATFORMS.includes(platform)) {
+            fillQuery = fillQuery.eq('webtoon_sources.platform', platform);
+          }
+          if (status && VALID_STATUSES.includes(status)) fillQuery = fillQuery.eq('status', status);
+          if (genre && VALID_GENRES.includes(genre)) fillQuery = fillQuery.eq('genre', genre);
+          fillQuery = applyInitialFilter(fillQuery, initial);
+          let fillResult = await fillQuery.order('title', { ascending: true }).range(offset, offset + 199);
+          if (fillResult.error?.message?.includes('webtoon_sources')) {
+            let fallback = supabase.from('webtoons').select('*');
+            if (status && VALID_STATUSES.includes(status)) fallback = fallback.eq('status', status);
+            if (genre && VALID_GENRES.includes(genre)) fallback = fallback.eq('genre', genre);
+            fallback = applyInitialFilter(fallback, initial);
+            fillResult = await fallback.order('title', { ascending: true }).range(offset, offset + 199);
+          }
+          const rows = (fillResult.data ?? []) as WebtoonRowData[];
+          if (rows.length === 0) break;
+          for (const row of rows) {
+            if (reviewedSet.has(row.id)) continue;
+            if (scanned++ < skipUnreviewed) continue;
+            unreviewed.push(row);
+            if (unreviewed.length >= needed) break;
+          }
+          offset += 200;
+        }
+        pageItems.push(...unreviewed.map((webtoon) => withStats({ ...webtoon, reviews: [] })));
+      }
+
+      return {
+        items: pageItems,
+        total: countResult.count ?? reviewedItems.length,
+        page: safePage,
+        limit: safeLimit,
+      };
     }
 
     if (pageResult.error || !pageResult.data) {
