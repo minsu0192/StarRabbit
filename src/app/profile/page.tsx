@@ -8,6 +8,7 @@ import NicknameForm from '@/components/NicknameForm';
 import BunnyMascot from '@/components/BunnyMascot';
 import MyReviewList from '@/components/MyReviewList';
 import TierBunny from '@/components/TierBunny';
+import LevelUpPopup from '@/components/LevelUpPopup';
 import { POINT_LEVELS, POINT_RULES, getPointLevel } from '@/lib/points';
 import PointHistoryModal from '@/components/PointHistoryModal';
 
@@ -64,6 +65,7 @@ export default async function ProfilePage() {
   const points = Number(rawPoints ?? totalRecommends);
   const rank = getRank(totalRecommends);
   const pointLevel = getPointLevel(points);
+  const pointLevelIndex = POINT_LEVELS.findIndex((level) => level.label === pointLevel.label);
 
   const lastAttendance = profile && 'last_attendance_at' in profile
     ? profile.last_attendance_at as string | null
@@ -73,6 +75,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="flex flex-col min-h-screen max-w-2xl mx-auto w-full">
+      <LevelUpPopup userId={user.id} levelLabel={pointLevel.label} levelIndex={pointLevelIndex} />
       <Header />
 
       {/* 프로필 헤더 */}

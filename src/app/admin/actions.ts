@@ -132,7 +132,7 @@ export async function createCheerEvent(formData: FormData) {
   }
 
   const { error: entryError } = await service
-    .from('cheer_event_entries')
+    .from('cheer_entries')
     .insert(webtoonIds.map((webtoonId) => ({ event_id: event!.id, webtoon_id: webtoonId })));
 
   if (entryError) {
@@ -142,4 +142,82 @@ export async function createCheerEvent(formData: FormData) {
   revalidatePath('/admin');
   revalidatePath('/cheer');
   redirect('/admin?msg=' + encodeURIComponent(`응원전 "${title}" 생성 완료!`));
+}
+
+export async function approveWebtoonRequest(formData: FormData) {
+  const user = await requireAdmin();
+  const service = requireServiceRole();
+  const requestId = nonEmpty(formData.get('requestId'));
+  if (!requestId) throw new Error('승인할 신청이 없습니다');
+
+  const { data: request, error: requestError } = await service
+    .from('webtoon_requests')
+    .select('id, title, author, platform, source_url, status')
+    .eq('id', requestId)
+    .single();
+  if (requestError || !request) throw new Error(requestError?.message ?? '신청을 찾을 수 없습니다');
+  if (request.status !== 'pending') redirect('/admin?msg=' + encodeURIComponent('이미 처리된 신청입니다'));
+
+  const author = nonEmpty(request.author) || '미상';
+  const { data: webtoon, error: webtoonError } = await service
+    .from('webtoons')
+    .insert({
+      title: request.title,
+      author,
+      platform: request.platform,
+      status: 'ongoing',
+    })
+    .select('id')
+    .single();
+  if (webtoonError || !webtoon) {
+    redirect('/admin?msg=' + encodeURIComponent(webtoonError?.message ?? '웹툰 등록에 실패했습니다'));
+  }
+
+  await service.from('webtoon_sources').insert({
+    webtoon_id: webtoon.id,
+    platform: request.platform,
+    external_id: null,
+    source_url: request.source_url || null,
+    title: request.title,
+    author,
+    status: 'ongoing',
+  });
+
+  const { error } = await service
+    .from('webtoon_requests')
+    .update({
+      status: 'approved',
+      reviewed_by: user.id,
+      reviewed_at: new Date().toISOString(),
+      created_webtoon_id: webtoon.id,
+    })
+    .eq('id', requestId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/admin');
+  revalidatePath('/request');
+  revalidatePath('/');
+  redirect('/admin?msg=' + encodeURIComponent(`"${request.title}" 등록 승인 완료`));
+}
+
+export async function rejectWebtoonRequest(formData: FormData) {
+  const user = await requireAdmin();
+  const service = requireServiceRole();
+  const requestId = nonEmpty(formData.get('requestId'));
+  if (!requestId) throw new Error('반려할 신청이 없습니다');
+
+  const { error } = await service
+    .from('webtoon_requests')
+    .update({
+      status: 'rejected',
+      reviewed_by: user.id,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq('id', requestId)
+    .eq('status', 'pending');
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/admin');
+  revalidatePath('/request');
+  redirect('/admin?msg=' + encodeURIComponent('등록 신청을 반려했습니다'));
 }

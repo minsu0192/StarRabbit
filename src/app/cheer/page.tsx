@@ -3,8 +3,69 @@ export const runtime = 'edge';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import BunnyMascot from '@/components/BunnyMascot';
+import { createClient } from '@/lib/supabase/server';
+import { recommendCheerComment, submitCheerComment } from './actions';
 
-export default function CheerPage() {
+type CheerComment = {
+  id: string;
+  webtoon_id: string;
+  user_id: string;
+  comment: string;
+  recommend_count: number;
+  created_at: string;
+  profiles: { nickname?: string } | null;
+};
+
+type CheerEntry = {
+  id: string;
+  webtoon_id: string;
+  webtoons: { title?: string; author?: string | null; platform?: string } | null;
+};
+
+type CheerEvent = {
+  id: string;
+  title: string;
+  status: string;
+  starts_at: string;
+  ends_at: string;
+  cheer_entries?: CheerEntry[];
+  cheer_comments?: CheerComment[];
+};
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
+function eventState(event: CheerEvent) {
+  const now = Date.now();
+  if (event.status === 'cancelled') return '취소됨';
+  if (now < new Date(event.starts_at).getTime()) return '예정';
+  if (now > new Date(event.ends_at).getTime()) return '종료';
+  return '진행중';
+}
+
+export default async function CheerPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data, error } = await supabase
+    .from('cheer_events')
+    .select(`
+      id, title, status, starts_at, ends_at,
+      cheer_entries(id, webtoon_id, webtoons(title, author, platform)),
+      cheer_comments(id, webtoon_id, user_id, comment, recommend_count, created_at, profiles(nickname))
+    `)
+    .in('status', ['scheduled', 'active'])
+    .order('starts_at', { ascending: false })
+    .limit(10);
+
+  const events = error ? [] : ((data ?? []) as CheerEvent[]);
+
   return (
     <div className="flex min-h-screen w-full max-w-2xl flex-col mx-auto pb-20">
       <Header />
@@ -17,54 +78,113 @@ export default function CheerPage() {
           <div className="min-w-0">
             <p className="text-xs font-bold text-amber-500">CHEER LEAGUE</p>
             <h1 className="text-2xl font-black tracking-tight">별토끼 응원전</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">좋아하는 작품을 응원하고 포인트를 받는 이벤트</p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">좋아하는 작품을 골라 응원 댓글을 남겨보세요.</p>
           </div>
         </div>
       </section>
 
-      <section className="border-b border-gray-100 px-4 py-5 dark:border-gray-900">
-        <h2 className="mb-3 text-sm font-bold">진행 방식</h2>
-        <div className="grid gap-2 text-sm text-gray-600 dark:text-gray-300">
-          <p>매주 작품 여러 개가 같은 리그에 올라가고, 유저는 작품 하나를 골라 응원 댓글을 남깁니다.</p>
-          <p>이벤트 종료 시 응원 댓글 수와 추천 수를 합산해 승리 작품을 정합니다.</p>
-          <p>포인트는 실제 참여 기록 기준으로만 지급하고, 같은 이벤트에서는 중복 지급을 막습니다.</p>
-        </div>
-      </section>
+      {!user && (
+        <section className="border-b border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 dark:border-amber-950 dark:bg-amber-950/30 dark:text-amber-300">
+          로그인하면 응원 댓글을 작성하고 포인트를 받을 수 있어요.
+        </section>
+      )}
 
-      <section className="border-b border-gray-100 px-4 py-5 dark:border-gray-900">
-        <h2 className="mb-3 text-sm font-bold">포인트 보상</h2>
-        <div className="grid gap-2">
-          {[
-            { label: '응원 댓글 작성', points: '+10', note: '이벤트당 1회' },
-            { label: '응원전 승리팀', points: '+50', note: '이벤트 종료 시' },
-            { label: '응원전 패배팀', points: '+20', note: '이벤트 종료 시' },
-            { label: '응원 댓글 1등', points: '+150', note: '추천수 최다' },
-            { label: '응원 댓글 2등', points: '+100', note: '추천수 2위' },
-            { label: '응원 댓글 3등', points: '+50', note: '추천수 3위' },
-          ].map((item) => (
-            <div key={item.label} className="flex items-center justify-between rounded-xl border border-gray-100 px-3 py-2.5 dark:border-gray-900">
-              <div>
-                <p className="text-sm font-bold">{item.label}</p>
-                <p className="text-[11px] text-gray-400">{item.note}</p>
-              </div>
-              <span className="text-sm font-black text-amber-500">{item.points}</span>
-            </div>
-          ))}
-        </div>
-      </section>
+      {error ? (
+        <section className="px-4 py-12 text-center">
+          <BunnyMascot size={44} />
+          <p className="mt-3 text-sm text-gray-400">응원전 테이블이 아직 준비되지 않았어요.</p>
+        </section>
+      ) : events.length === 0 ? (
+        <section className="px-4 py-12 text-center">
+          <BunnyMascot size={44} />
+          <p className="mt-3 text-sm text-gray-400">현재 진행 중인 응원전이 없습니다.</p>
+        </section>
+      ) : (
+        <main className="flex-1 divide-y divide-gray-100 dark:divide-gray-900">
+          {events.map((event) => {
+            const state = eventState(event);
+            const entries = event.cheer_entries ?? [];
+            const comments = [...(event.cheer_comments ?? [])].sort((a, b) => b.recommend_count - a.recommend_count || new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            const myComment = user ? comments.find((comment) => comment.user_id === user.id) : null;
+            const isOpen = state === '진행중';
 
-      <section className="px-4 py-5">
-        <h2 className="mb-3 text-sm font-bold">운영 제한</h2>
-        <div className="grid gap-2 text-sm text-gray-600 dark:text-gray-300">
-          <p>응원 댓글은 이벤트당 1개만 포인트 지급 대상입니다.</p>
-          <p>자기 댓글 추천, 반복 삭제 후 재작성, 동일 문구 도배는 포인트 지급에서 제외합니다.</p>
-          <p>승리팀/패배팀 보상은 이벤트 종료 시 한 번만 정산합니다.</p>
-        </div>
-      </section>
+            return (
+              <article key={event.id} className="px-4 py-5">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-lg font-black tracking-tight">{event.title}</h2>
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-black ${isOpen ? 'bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-900'}`}>
+                        {state}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">
+                      {formatDateTime(event.starts_at)} - {formatDateTime(event.ends_at)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mb-4 grid gap-2">
+                  {entries.map((entry) => {
+                    const count = comments.filter((comment) => comment.webtoon_id === entry.webtoon_id).length;
+                    return (
+                      <div key={entry.id} className="grid grid-cols-[1fr_auto] gap-3 rounded-md border border-gray-100 px-3 py-2 dark:border-gray-900">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold">{entry.webtoons?.title ?? '알 수 없음'}</p>
+                          <p className="mt-0.5 truncate text-xs text-gray-400">{entry.webtoons?.author ?? '작가 미상'} · {entry.webtoons?.platform ?? 'etc'}</p>
+                        </div>
+                        <span className="self-center text-xs font-black text-amber-500">{count} 응원</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {user && isOpen && (
+                  <form action={submitCheerComment} className="mb-4 grid gap-2 rounded-md border border-amber-100 bg-amber-50/50 p-3 dark:border-amber-950 dark:bg-amber-950/20">
+                    <input type="hidden" name="eventId" value={event.id} />
+                    <select name="webtoonId" defaultValue={myComment?.webtoon_id ?? entries[0]?.webtoon_id ?? ''} className="rounded-md border border-amber-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-amber-900 dark:bg-gray-950">
+                      {entries.map((entry) => (
+                        <option key={entry.id} value={entry.webtoon_id}>{entry.webtoons?.title ?? entry.webtoon_id}</option>
+                      ))}
+                    </select>
+                    <textarea name="comment" required minLength={2} maxLength={300} rows={3} defaultValue={myComment?.comment ?? ''} placeholder="응원 댓글을 남겨주세요" className="rounded-md border border-amber-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-amber-900 dark:bg-gray-950" />
+                    <button className="rounded-md bg-gray-950 px-3 py-2 text-xs font-bold text-white dark:bg-white dark:text-gray-950">
+                      {myComment ? '응원 수정' : '응원하기 +10P'}
+                    </button>
+                  </form>
+                )}
+
+                <div className="divide-y divide-gray-100 rounded-md border border-gray-100 dark:divide-gray-900 dark:border-gray-900">
+                  {comments.length === 0 ? (
+                    <p className="px-3 py-6 text-center text-sm text-gray-400">아직 응원 댓글이 없어요.</p>
+                  ) : comments.map((comment) => {
+                    const entry = entries.find((item) => item.webtoon_id === comment.webtoon_id);
+                    return (
+                      <div key={comment.id} className="grid grid-cols-[1fr_auto] gap-3 px-3 py-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-amber-600 dark:text-amber-400">{entry?.webtoons?.title ?? '알 수 없음'}</p>
+                          <p className="mt-1 break-words text-sm text-gray-700 dark:text-gray-300">{comment.comment}</p>
+                          <p className="mt-1 text-[11px] text-gray-400">{comment.profiles?.nickname ?? '익명'} · {comment.created_at.slice(0, 10)}</p>
+                        </div>
+                        <form action={recommendCheerComment} className="self-start">
+                          <input type="hidden" name="commentId" value={comment.id} />
+                          <button disabled={!user || comment.user_id === user?.id} className="rounded-md border border-gray-200 px-2 py-1 text-xs font-bold text-gray-500 disabled:opacity-40 dark:border-gray-800">
+                            ♥ {comment.recommend_count}
+                          </button>
+                        </form>
+                      </div>
+                    );
+                  })}
+                </div>
+              </article>
+            );
+          })}
+        </main>
+      )}
 
       <div className="px-4 pb-4">
-        <Link href="/ranking" className="flex items-center justify-center gap-2 rounded-xl border border-amber-200 py-3 text-sm font-bold text-amber-600 hover:bg-amber-50 dark:border-amber-900 dark:text-amber-400 dark:hover:bg-amber-950/30">
-          명예의 전당 보러가기 →
+        <Link href="/ranking" className="flex items-center justify-center gap-2 rounded-md border border-amber-200 py-3 text-sm font-bold text-amber-600 hover:bg-amber-50 dark:border-amber-900 dark:text-amber-400 dark:hover:bg-amber-950/30">
+          명예의 전당 보러가기
         </Link>
       </div>
     </div>

@@ -24,7 +24,15 @@ CREATE TABLE IF NOT EXISTS public.cheer_events (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS public.cheer_event_entries (
+DO $$
+BEGIN
+  IF to_regclass('public.cheer_entries') IS NULL
+     AND to_regclass('public.cheer_event_entries') IS NOT NULL THEN
+    ALTER TABLE public.cheer_event_entries RENAME TO cheer_entries;
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.cheer_entries (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id uuid NOT NULL REFERENCES public.cheer_events(id) ON DELETE CASCADE,
   webtoon_id uuid NOT NULL REFERENCES public.webtoons(id) ON DELETE CASCADE,
@@ -119,42 +127,82 @@ CREATE TRIGGER on_cheer_recommend_delete
 
 ALTER TABLE public.point_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cheer_events ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.cheer_event_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cheer_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cheer_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cheer_comment_recommends ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "point_transactions_read_own" ON public.point_transactions;
 CREATE POLICY "point_transactions_read_own"
   ON public.point_transactions FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "cheer_events_read" ON public.cheer_events;
 CREATE POLICY "cheer_events_read"
   ON public.cheer_events FOR SELECT
   USING (true);
 
-CREATE POLICY "cheer_event_entries_read"
-  ON public.cheer_event_entries FOR SELECT
+DROP POLICY IF EXISTS "cheer_event_entries_read" ON public.cheer_entries;
+DROP POLICY IF EXISTS "cheer_entries_read" ON public.cheer_entries;
+CREATE POLICY "cheer_entries_read"
+  ON public.cheer_entries FOR SELECT
   USING (true);
 
+CREATE TABLE IF NOT EXISTS public.webtoon_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  requester_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title text NOT NULL CHECK (char_length(trim(title)) >= 1 AND char_length(title) <= 120),
+  author text NOT NULL DEFAULT '',
+  platform text NOT NULL DEFAULT 'etc' CHECK (platform IN ('naver', 'kakao', 'ridi', 'etc')),
+  source_url text,
+  note text,
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  reviewed_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  reviewed_at timestamptz,
+  created_webtoon_id uuid REFERENCES public.webtoons(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS webtoon_requests_status_created_at_idx ON public.webtoon_requests(status, created_at);
+CREATE INDEX IF NOT EXISTS webtoon_requests_requester_id_idx ON public.webtoon_requests(requester_id);
+
+ALTER TABLE public.webtoon_requests ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "webtoon_requests_insert_own" ON public.webtoon_requests;
+CREATE POLICY "webtoon_requests_insert_own"
+  ON public.webtoon_requests FOR INSERT
+  WITH CHECK (auth.uid() = requester_id);
+
+DROP POLICY IF EXISTS "webtoon_requests_read_own" ON public.webtoon_requests;
+CREATE POLICY "webtoon_requests_read_own"
+  ON public.webtoon_requests FOR SELECT
+  USING (auth.uid() = requester_id);
+
+DROP POLICY IF EXISTS "cheer_comments_read" ON public.cheer_comments;
 CREATE POLICY "cheer_comments_read"
   ON public.cheer_comments FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "cheer_comments_insert_own" ON public.cheer_comments;
 CREATE POLICY "cheer_comments_insert_own"
   ON public.cheer_comments FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "cheer_comments_update_own" ON public.cheer_comments;
 CREATE POLICY "cheer_comments_update_own"
   ON public.cheer_comments FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "cheer_comment_recommends_read" ON public.cheer_comment_recommends;
 CREATE POLICY "cheer_comment_recommends_read"
   ON public.cheer_comment_recommends FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "cheer_comment_recommends_insert_own" ON public.cheer_comment_recommends;
 CREATE POLICY "cheer_comment_recommends_insert_own"
   ON public.cheer_comment_recommends FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "cheer_comment_recommends_delete_own" ON public.cheer_comment_recommends;
 CREATE POLICY "cheer_comment_recommends_delete_own"
   ON public.cheer_comment_recommends FOR DELETE
   USING (auth.uid() = user_id);

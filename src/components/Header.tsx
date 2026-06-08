@@ -61,6 +61,11 @@ export default async function Header() {
           <Link href="/cheer" className="hidden text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:hover:text-gray-100 min-[390px]:block">
             응원
           </Link>
+          {user && (
+            <Link href="/request" className="hidden text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:hover:text-gray-100 min-[460px]:block">
+              신청
+            </Link>
+          )}
           <LoginButton user={userInfo} compact />
         </div>
       </div>

@@ -9,8 +9,10 @@ import WebtoonSearchPicker from '@/components/WebtoonSearchPicker';
 import ScoreBadge from '@/components/ScoreBadge';
 import AdminBannerSection from '@/components/AdminBannerSection';
 import {
+  approveWebtoonRequest,
   createCheerEvent,
   deleteReviewAsAdmin,
+  rejectWebtoonRequest,
   suspendUserAsAdmin,
   updateTopNotice,
   updateBannerAd,
@@ -48,6 +50,17 @@ type AdminProfileRow = {
   suspended_at?: string | null;
 };
 
+type WebtoonRequestRow = {
+  id: string;
+  title: string;
+  author: string | null;
+  platform: string;
+  source_url: string | null;
+  note: string | null;
+  created_at: string;
+  profiles: { nickname?: string } | null;
+};
+
 interface AdminProps {
   searchParams: Promise<{ msg?: string }>;
 }
@@ -75,13 +88,14 @@ export default async function AdminPage({ searchParams }: AdminProps) {
   let bannerImageUrl = '';
   let bannerLinkUrl = '';
   let bannerAltText = '';
+  let webtoonRequests: WebtoonRequestRow[] = [];
   const reportedReviews: ReviewRow[] = [];
   const serviceConfigured = hasServiceRoleConfig();
 
   if (serviceConfigured) {
     try {
       const service = createServiceClient();
-      const [reviewsResult, profilesResult, settingsResult, reportsResult] = await Promise.all([
+      const [reviewsResult, profilesResult, settingsResult, reportsResult, webtoonRequestsResult] = await Promise.all([
         service
           .from('reviews')
           .select('id, user_id, score, comment, created_at, profiles(id, nickname), webtoons(title)')
@@ -98,6 +112,12 @@ export default async function AdminPage({ searchParams }: AdminProps) {
           .select('review_id, reviews(id, score, comment, created_at, profiles(id, nickname), webtoons(title))')
           .order('created_at', { ascending: false })
           .limit(20),
+        service
+          .from('webtoon_requests')
+          .select('id, title, author, platform, source_url, note, created_at, profiles(nickname)')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: true })
+          .limit(20),
       ]);
 
       profiles = profilesResult.data ?? [];
@@ -110,6 +130,7 @@ export default async function AdminPage({ searchParams }: AdminProps) {
       bannerImageUrl = (settingsResult.data ?? []).find((s) => s.key === 'banner_image_url')?.value ?? '';
       bannerLinkUrl = (settingsResult.data ?? []).find((s) => s.key === 'banner_link_url')?.value ?? '';
       bannerAltText = (settingsResult.data ?? []).find((s) => s.key === 'banner_alt_text')?.value ?? '';
+      webtoonRequests = (webtoonRequestsResult.data ?? []) as WebtoonRequestRow[];
 
       const seenIds = new Set<string>();
       for (const r of reportsResult.data ?? []) {
@@ -177,6 +198,49 @@ export default async function AdminPage({ searchParams }: AdminProps) {
               응원전 만들기
             </button>
           </form>
+        </section>
+
+        <section className="rounded-md border border-gray-100 p-3 dark:border-gray-900">
+          <h2 className="mb-3 text-sm font-bold">웹툰 등록 신청 ({webtoonRequests.length})</h2>
+          {webtoonRequests.length === 0 ? (
+            <p className="py-3 text-center text-sm text-gray-400">대기 중인 신청이 없습니다.</p>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-gray-900">
+              {webtoonRequests.map((request) => (
+                <div key={request.id} className="grid gap-2 py-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-bold">{request.title}</p>
+                      <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500 dark:bg-gray-900">{request.platform}</span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-gray-400">
+                      {request.author || '작가 미상'} · 신청자 {request.profiles?.nickname ?? '익명'} · {request.created_at.slice(0, 10)}
+                    </p>
+                    {request.source_url && (
+                      <a href={request.source_url} target="_blank" rel="noreferrer" className="mt-1 block truncate text-xs text-amber-600 hover:underline">
+                        {request.source_url}
+                      </a>
+                    )}
+                    {request.note && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{request.note}</p>}
+                  </div>
+                  <div className="flex gap-2">
+                    <form action={approveWebtoonRequest}>
+                      <input type="hidden" name="requestId" value={request.id} />
+                      <button className="rounded-md bg-gray-950 px-3 py-1.5 text-xs font-bold text-white dark:bg-white dark:text-gray-950">
+                        승인
+                      </button>
+                    </form>
+                    <form action={rejectWebtoonRequest}>
+                      <input type="hidden" name="requestId" value={request.id} />
+                      <button className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-bold text-red-500">
+                        반려
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {reportedReviews.length > 0 && (
