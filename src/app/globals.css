@@ -197,6 +197,15 @@ html[data-app-theme="excel"] span[class*="bg-\\["] {
   font-weight: 500 !important;
 }
 
+html[data-app-theme="excel"] [data-platform-badge],
+html[data-app-theme="excel"] [data-score-badge] {
+  border: 1px solid #c8ccc7 !important;
+  background: #f1f2f0 !important;
+  color: #626862 !important;
+  font-weight: 400 !important;
+  box-shadow: none !important;
+}
+
 html[data-app-theme="excel"] button {
   border-color: #9eae9a !important;
 }

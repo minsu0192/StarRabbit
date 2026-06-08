@@ -16,7 +16,10 @@ const PLATFORM_COLOR: Record<Platform, string> = {
 
 export default function PlatformBadge({ platform }: { platform: Platform }) {
   return (
-    <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${PLATFORM_COLOR[platform]}`}>
+    <span
+      data-platform-badge={platform}
+      className={`text-xs font-medium px-1.5 py-0.5 rounded ${PLATFORM_COLOR[platform]}`}
+    >
       {PLATFORM_LABEL[platform]}
     </span>
   );

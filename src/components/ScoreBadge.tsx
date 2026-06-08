@@ -9,7 +9,7 @@ export default function ScoreBadge({ score, size = 'md' }: Props) {
   if (n === null || !Number.isFinite(n)) {
     const cls = size === 'sm' ? 'text-[11px] px-1.5 py-px' : size === 'lg' ? 'text-lg px-2.5 py-1' : 'text-xs px-2 py-0.5';
     return (
-      <span className={`inline-flex items-center justify-center rounded-md font-black tabular-nums ${cls} bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500`}>
+      <span data-score-badge className={`inline-flex items-center justify-center rounded-md font-black tabular-nums ${cls} bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500`}>
         −
       </span>
     );
@@ -26,7 +26,7 @@ export default function ScoreBadge({ score, size = 'md' }: Props) {
                     'text-sm px-2 py-0.5 rounded-md';
 
   return (
-    <span className={`inline-flex items-center justify-center font-black tabular-nums ${cls} ${bg}`}>
+    <span data-score-badge className={`inline-flex items-center justify-center font-black tabular-nums ${cls} ${bg}`}>
       {n.toFixed(1)}
     </span>
   );
