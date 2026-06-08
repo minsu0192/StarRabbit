@@ -13,6 +13,10 @@ export const POINT_RULES = [
   { label: '주간랭킹 5위', points: 100, description: '그 주 받은 추천수 5위' },
   { label: '별점만 남기기', points: 5, description: '작품당 최초 1회' },
   { label: '별점과 한줄평 남기기', points: 15, description: '작품당 최초 1회, 별점만 남긴 뒤 한줄평 추가 시 차액 10스타' },
+  { label: '응원전 참여', points: 50, description: '이벤트당 응원 댓글 최초 1회' },
+  { label: '응원전 승리팀', points: 500, description: '이벤트 종료 시 승리 작품 응원 댓글 작성자' },
+  { label: '응원전 패배팀', points: 200, description: '이벤트 종료 시 패배 작품 응원 댓글 작성자' },
+  { label: '응원 댓글 1등', points: 300, description: '이벤트 내 추천수 1위 댓글' },
 ];
 
 export const POINT_LEVELS = [

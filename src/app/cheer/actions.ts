@@ -33,7 +33,8 @@ export async function submitCheerComment(formData: FormData) {
   const now = Date.now();
   const isOpen = event
     && event.status !== 'cancelled'
-    && new Date(event.starts_at).getTime() <= now
+    && event.status !== 'settled'
+    && (event.status === 'active' || new Date(event.starts_at).getTime() <= now)
     && new Date(event.ends_at).getTime() >= now;
   if (!isOpen) return;
 
@@ -52,7 +53,7 @@ export async function submitCheerComment(formData: FormData) {
   if (!error) {
     await supabase.rpc('award_points', {
       p_user_id: user.id,
-      p_amount: 10,
+      p_amount: 50,
       p_reason: '응원전 참여',
       p_unique_key: `cheer:${eventId}:${user.id}`,
       p_metadata: { event_id: eventId, webtoon_id: webtoonId },

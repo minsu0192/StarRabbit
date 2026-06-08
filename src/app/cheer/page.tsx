@@ -44,6 +44,8 @@ function formatDateTime(value: string) {
 function eventState(event: CheerEvent) {
   const now = Date.now();
   if (event.status === 'cancelled') return '취소됨';
+  if (event.status === 'settled') return '정산완료';
+  if (event.status === 'active' && now <= new Date(event.ends_at).getTime()) return '진행중';
   if (now < new Date(event.starts_at).getTime()) return '예정';
   if (now > new Date(event.ends_at).getTime()) return '종료';
   return '진행중';
@@ -78,7 +80,7 @@ export default async function CheerPage() {
           <div className="min-w-0">
             <p className="text-xs font-bold text-amber-500">CHEER LEAGUE</p>
             <h1 className="text-2xl font-black tracking-tight">별토끼 응원전</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">좋아하는 작품을 골라 응원 댓글을 남겨보세요.</p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">작품 하나를 골라 응원 댓글을 남기면 50스타를 받아요.</p>
           </div>
         </div>
       </section>
@@ -149,7 +151,7 @@ export default async function CheerPage() {
                     </select>
                     <textarea name="comment" required minLength={2} maxLength={300} rows={3} defaultValue={myComment?.comment ?? ''} placeholder="응원 댓글을 남겨주세요" className="rounded-md border border-amber-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-amber-900 dark:bg-gray-950" />
                     <button className="rounded-md bg-gray-950 px-3 py-2 text-xs font-bold text-white dark:bg-white dark:text-gray-950">
-                      {myComment ? '응원 수정' : '응원하기 +10P'}
+                      {myComment ? '응원 수정' : '응원하기 +50★'}
                     </button>
                   </form>
                 )}

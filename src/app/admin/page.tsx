@@ -9,10 +9,12 @@ import WebtoonSearchPicker from '@/components/WebtoonSearchPicker';
 import ScoreBadge from '@/components/ScoreBadge';
 import AdminBannerSection from '@/components/AdminBannerSection';
 import {
+  activateCheerEvent,
   approveWebtoonRequest,
   createCheerEvent,
   deleteReviewAsAdmin,
   rejectWebtoonRequest,
+  settleCheerEvent,
   suspendUserAsAdmin,
   updateTopNotice,
   updateBannerAd,
@@ -61,6 +63,17 @@ type WebtoonRequestRow = {
   profiles: { nickname?: string } | null;
 };
 
+type CheerAdminEvent = {
+  id: string;
+  title: string;
+  status: string;
+  starts_at: string;
+  ends_at: string;
+  winner_webtoon_id: string | null;
+  cheer_entries: { webtoon_id: string; webtoons: { title?: string } | null }[];
+  cheer_comments: { id: string; webtoon_id: string; user_id: string; recommend_count: number }[];
+};
+
 interface AdminProps {
   searchParams: Promise<{ msg?: string }>;
 }
@@ -89,13 +102,14 @@ export default async function AdminPage({ searchParams }: AdminProps) {
   let bannerLinkUrl = '';
   let bannerAltText = '';
   let webtoonRequests: WebtoonRequestRow[] = [];
+  let cheerEvents: CheerAdminEvent[] = [];
   const reportedReviews: ReviewRow[] = [];
   const serviceConfigured = hasServiceRoleConfig();
 
   if (serviceConfigured) {
     try {
       const service = createServiceClient();
-      const [reviewsResult, profilesResult, settingsResult, reportsResult, webtoonRequestsResult] = await Promise.all([
+      const [reviewsResult, profilesResult, settingsResult, reportsResult, webtoonRequestsResult, cheerEventsResult] = await Promise.all([
         service
           .from('reviews')
           .select('id, user_id, score, comment, created_at, profiles(id, nickname), webtoons(title)')
@@ -118,6 +132,11 @@ export default async function AdminPage({ searchParams }: AdminProps) {
           .eq('status', 'pending')
           .order('created_at', { ascending: true })
           .limit(20),
+        service
+          .from('cheer_events')
+          .select('id, title, status, starts_at, ends_at, winner_webtoon_id, cheer_entries(webtoon_id, webtoons(title)), cheer_comments(id, webtoon_id, user_id, recommend_count)')
+          .order('created_at', { ascending: false })
+          .limit(20),
       ]);
 
       profiles = profilesResult.data ?? [];
@@ -131,6 +150,7 @@ export default async function AdminPage({ searchParams }: AdminProps) {
       bannerLinkUrl = (settingsResult.data ?? []).find((s) => s.key === 'banner_link_url')?.value ?? '';
       bannerAltText = (settingsResult.data ?? []).find((s) => s.key === 'banner_alt_text')?.value ?? '';
       webtoonRequests = (webtoonRequestsResult.data ?? []) as WebtoonRequestRow[];
+      cheerEvents = (cheerEventsResult.data ?? []) as CheerAdminEvent[];
 
       const seenIds = new Set<string>();
       for (const r of reportsResult.data ?? []) {
@@ -199,6 +219,77 @@ export default async function AdminPage({ searchParams }: AdminProps) {
               응원전 만들기
             </button>
           </form>
+        </section>
+
+        <section className="rounded-md border border-gray-100 p-3 dark:border-gray-900">
+          <h2 className="mb-3 text-sm font-bold">응원전 관리 ({cheerEvents.length})</h2>
+          {cheerEvents.length === 0 ? (
+            <p className="py-3 text-center text-sm text-gray-400">생성된 응원전이 없습니다.</p>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-gray-900">
+              {cheerEvents.map((event) => {
+                const comments = event.cheer_comments ?? [];
+                const entries = event.cheer_entries ?? [];
+                const winnerTitle = entries.find((entry) => entry.webtoon_id === event.winner_webtoon_id)?.webtoons?.title;
+                return (
+                  <div key={event.id} className="grid gap-3 py-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-bold">{event.title}</p>
+                        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500 dark:bg-gray-900">{event.status}</span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-gray-400">
+                        {event.starts_at.slice(0, 16).replace('T', ' ')} - {event.ends_at.slice(0, 16).replace('T', ' ')}
+                        {' · '}응원 댓글 {comments.length}개
+                        {winnerTitle ? ` · 승리: ${winnerTitle}` : ''}
+                      </p>
+                    </div>
+                    {event.status !== 'active' && event.status !== 'settled' && event.status !== 'cancelled' && (
+                      <form action={activateCheerEvent}>
+                        <input type="hidden" name="eventId" value={event.id} />
+                        <button className="rounded-md border border-green-200 px-3 py-2 text-xs font-bold text-green-600 dark:border-green-900 dark:text-green-400">
+                          진행 시작
+                        </button>
+                      </form>
+                    )}
+                    <form action={settleCheerEvent} className="grid gap-2">
+                      <input type="hidden" name="eventId" value={event.id} />
+                      <div className="grid gap-1.5">
+                        {entries.map((entry) => {
+                          const count = comments.filter((comment) => comment.webtoon_id === entry.webtoon_id).length;
+                          return (
+                            <label key={entry.webtoon_id} className="flex items-center justify-between gap-3 rounded-md border border-gray-100 px-3 py-2 text-sm dark:border-gray-900">
+                              <span className="min-w-0 truncate">
+                                <input
+                                  type="radio"
+                                  name="winnerWebtoonId"
+                                  value={entry.webtoon_id}
+                                  defaultChecked={entry.webtoon_id === event.winner_webtoon_id}
+                                  disabled={event.status === 'settled'}
+                                  className="mr-2"
+                                />
+                                {entry.webtoons?.title ?? entry.webtoon_id}
+                              </span>
+                              <span className="shrink-0 text-xs font-bold text-amber-500">{count} 응원</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <button
+                        disabled={event.status === 'settled' || comments.length === 0}
+                        className="rounded-md bg-gray-950 px-3 py-2 text-xs font-bold text-white disabled:opacity-40 dark:bg-white dark:text-gray-950"
+                      >
+                        승리팀 선택 후 정산
+                      </button>
+                      <p className="text-[11px] text-gray-400">
+                        정산 시 참여 50★ 외에 승리팀 500★, 패배팀 200★, 추천 1등 300★가 중복 없이 지급됩니다.
+                      </p>
+                    </form>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         <section className="rounded-md border border-gray-100 p-3 dark:border-gray-900">

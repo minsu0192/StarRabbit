@@ -144,6 +144,114 @@ export async function createCheerEvent(formData: FormData) {
   redirect('/admin?msg=' + encodeURIComponent(`응원전 "${title}" 생성 완료!`));
 }
 
+export async function activateCheerEvent(formData: FormData) {
+  await requireAdmin();
+  const service = requireServiceRole();
+  const eventId = nonEmpty(formData.get('eventId'));
+  if (!eventId) throw new Error('진행할 응원전이 없습니다');
+
+  const { error } = await service
+    .from('cheer_events')
+    .update({ status: 'active' })
+    .eq('id', eventId)
+    .neq('status', 'settled')
+    .neq('status', 'cancelled');
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/admin');
+  revalidatePath('/cheer');
+  redirect('/admin?msg=' + encodeURIComponent('응원전을 진행중으로 변경했습니다'));
+}
+
+export async function settleCheerEvent(formData: FormData) {
+  await requireAdmin();
+  const service = requireServiceRole();
+  const eventId = nonEmpty(formData.get('eventId'));
+  const winnerWebtoonId = nonEmpty(formData.get('winnerWebtoonId'));
+  if (!eventId || !winnerWebtoonId) {
+    redirect('/admin?msg=' + encodeURIComponent('정산할 응원전과 승리 작품을 선택해주세요'));
+  }
+
+  const { data: event, error: eventError } = await service
+    .from('cheer_events')
+    .select('id, title, status, cheer_entries(webtoon_id)')
+    .eq('id', eventId)
+    .single();
+  if (eventError || !event) {
+    redirect('/admin?msg=' + encodeURIComponent(eventError?.message ?? '응원전을 찾을 수 없습니다'));
+  }
+  if (event.status === 'settled') {
+    redirect('/admin?msg=' + encodeURIComponent('이미 정산된 응원전입니다'));
+  }
+
+  const entryIds = ((event.cheer_entries ?? []) as { webtoon_id: string }[]).map((entry) => entry.webtoon_id);
+  if (!entryIds.includes(winnerWebtoonId)) {
+    redirect('/admin?msg=' + encodeURIComponent('승리 작품이 응원전 후보가 아닙니다'));
+  }
+
+  const { data: comments, error: commentsError } = await service
+    .from('cheer_comments')
+    .select('id, event_id, webtoon_id, user_id, recommend_count, created_at')
+    .eq('event_id', eventId);
+  if (commentsError) {
+    redirect('/admin?msg=' + encodeURIComponent(commentsError.message));
+  }
+  const cheerComments = (comments ?? []) as {
+    id: string;
+    webtoon_id: string;
+    user_id: string;
+    recommend_count: number;
+    created_at: string;
+  }[];
+  if (cheerComments.length === 0) {
+    redirect('/admin?msg=' + encodeURIComponent('정산할 응원 댓글이 없습니다'));
+  }
+
+  for (const comment of cheerComments) {
+    const won = comment.webtoon_id === winnerWebtoonId;
+    const amount = won ? 500 : 200;
+    const { error: pointError } = await service.rpc('award_points', {
+      p_user_id: comment.user_id,
+      p_amount: amount,
+      p_reason: won ? '응원전 승리팀' : '응원전 패배팀',
+      p_unique_key: `cheer_settle:${eventId}:${comment.user_id}`,
+      p_metadata: { event_id: eventId, webtoon_id: comment.webtoon_id, winner_webtoon_id: winnerWebtoonId },
+    });
+    if (pointError) {
+      redirect('/admin?msg=' + encodeURIComponent(pointError.message));
+    }
+  }
+
+  const topComment = [...cheerComments].sort((a, b) => {
+    return (b.recommend_count ?? 0) - (a.recommend_count ?? 0)
+      || new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  })[0];
+
+  if (topComment && topComment.recommend_count > 0) {
+    const { error: topPointError } = await service.rpc('award_points', {
+      p_user_id: topComment.user_id,
+      p_amount: 300,
+      p_reason: '응원 댓글 1등',
+      p_unique_key: `cheer_top:${eventId}:${topComment.user_id}`,
+      p_metadata: { event_id: eventId, cheer_comment_id: topComment.id, recommend_count: topComment.recommend_count },
+    });
+    if (topPointError) {
+      redirect('/admin?msg=' + encodeURIComponent(topPointError.message));
+    }
+  }
+
+  const { error } = await service
+    .from('cheer_events')
+    .update({ status: 'settled', winner_webtoon_id: winnerWebtoonId })
+    .eq('id', eventId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/admin');
+  revalidatePath('/cheer');
+  revalidatePath('/profile');
+  redirect('/admin?msg=' + encodeURIComponent(`응원전 "${event.title}" 정산 완료`));
+}
+
 export async function approveWebtoonRequest(formData: FormData) {
   const user = await requireAdmin();
   const service = requireServiceRole();
