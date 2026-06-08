@@ -253,41 +253,41 @@ export async function getWebtoons(
   // 기본순/인기순은 DB의 리뷰 수 캐시로 직접 페이지네이션한다.
   // 전체 작품을 Worker 메모리로 가져오지 않으므로 뒤쪽 페이지도 유지되고 CPU 사용도 작다.
   if ((sort === 'featured' || sort === 'popular') && !origin) {
-    const selectClause = platform && VALID_PLATFORMS.includes(platform)
-      ? `*, webtoon_sources!inner(*)`
-      : `*, webtoon_sources(*)`;
-    let pageQuery = supabase
-      .from('webtoons')
-      .select(selectClause, { count: 'exact' });
+    const runPageQuery = async (includeSources: boolean, useReviewCountCache: boolean) => {
+      const selectClause = includeSources
+        ? platform && VALID_PLATFORMS.includes(platform)
+          ? `*, webtoon_sources!inner(*)`
+          : `*, webtoon_sources(*)`
+        : '*';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let q: any = supabase.from('webtoons').select(selectClause, { count: 'exact' });
+      if (includeSources && platform && VALID_PLATFORMS.includes(platform)) {
+        q = q.eq('webtoon_sources.platform', platform);
+      }
+      if (status && VALID_STATUSES.includes(status)) q = q.eq('status', status);
+      if (genre && VALID_GENRES.includes(genre)) q = q.eq('genre', genre);
+      q = applyInitialFilter(q, initial);
+      if (useReviewCountCache) q = q.order('cached_review_count', { ascending: false });
+      return q.order('title', { ascending: true }).range(from, to);
+    };
 
-    if (platform && VALID_PLATFORMS.includes(platform)) {
-      pageQuery = pageQuery.eq('webtoon_sources.platform', platform);
-    }
-    if (status && VALID_STATUSES.includes(status)) pageQuery = pageQuery.eq('status', status);
-    if (genre && VALID_GENRES.includes(genre)) pageQuery = pageQuery.eq('genre', genre);
-    pageQuery = applyInitialFilter(pageQuery, initial);
-    pageQuery = pageQuery
-      .order('cached_review_count', { ascending: false })
-      .order('title', { ascending: true })
-      .range(from, to);
-
-    let pageResult = await pageQuery;
+    let pageResult = await runPageQuery(true, true);
     if (pageResult.error?.message?.includes('webtoon_sources')) {
-      let fallback = supabase.from('webtoons').select('*', { count: 'exact' });
-      if (status && VALID_STATUSES.includes(status)) fallback = fallback.eq('status', status);
-      if (genre && VALID_GENRES.includes(genre)) fallback = fallback.eq('genre', genre);
-      fallback = applyInitialFilter(fallback, initial);
-      pageResult = await fallback
-        .order('cached_review_count', { ascending: false })
-        .order('title', { ascending: true })
-        .range(from, to);
+      pageResult = await runPageQuery(false, true);
+    }
+    if (pageResult.error) {
+      pageResult = await runPageQuery(true, false);
+      if (pageResult.error?.message?.includes('webtoon_sources')) {
+        pageResult = await runPageQuery(false, false);
+      }
     }
 
     if (pageResult.error || !pageResult.data) {
       return { items: [], total: 0, page: safePage, limit: safeLimit };
     }
 
-    const pageIds = pageResult.data.map((row) => row.id);
+    const pageData = pageResult.data as WebtoonRowData[];
+    const pageIds = pageData.map((row) => row.id);
     const idsParam = pageIds.map((id) => `"${id}"`).join(',');
     const reviewRows = pageIds.length === 0
       ? []
@@ -311,7 +311,7 @@ export async function getWebtoons(
       pageReviewMap.set(review.webtoon_id, list);
     }
 
-    const items = pageResult.data.map((webtoon) => withStats({
+    const items = pageData.map((webtoon) => withStats({
       ...webtoon,
       reviews: pageReviewMap.get(webtoon.id) ?? [],
     }));
