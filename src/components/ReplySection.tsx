@@ -85,24 +85,24 @@ export default function ReplySection({ reviewId, initialReplies, currentUserId, 
   const replyCount = replies.length;
 
   return (
-    <div className="mt-1.5">
+    <div className="mt-1">
       <button
         onClick={() => setOpen((v) => !v)}
         className="text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
       >
-        {replyCount > 0 ? `댓글 ${replyCount}개` : '댓글'}
-        {canReply && <span className="ml-1">{open ? '닫기' : '쓰기'}</span>}
+        {replyCount > 0 ? `댓글 ${replyCount}` : canReply ? '댓글 달기' : ''}
+        {canReply && replyCount > 0 && <span className="ml-1 text-gray-300 dark:text-gray-700">{open ? '닫기' : '+'}</span>}
       </button>
 
       {(open || replyCount > 0) && (
-        <div className="mt-2 space-y-2 rounded-lg bg-gray-50 px-2.5 py-2 dark:bg-gray-900/50">
+        <div className="mt-1.5 space-y-1.5 rounded-md bg-gray-50 px-2 py-1.5 dark:bg-gray-900/50">
           {replies.map((reply) => (
-            <div key={reply.id} className="flex items-start gap-1.5 group">
+            <div key={reply.id} className="flex items-start gap-1 group">
               <div className="flex-1 min-w-0">
-                <span className="text-[11px] font-semibold text-gray-500 mr-1.5">
+                <span className="text-[11px] font-semibold text-gray-500 mr-1">
                   {reply.profiles?.nickname ?? '익명'}
                 </span>
-                <span className="text-[11px] text-gray-700 dark:text-gray-300 break-words">
+                <span className="text-[11px] text-gray-600 dark:text-gray-400 break-words">
                   {reply.comment}
                 </span>
               </div>
@@ -112,27 +112,27 @@ export default function ReplySection({ reviewId, initialReplies, currentUserId, 
                   disabled={deletingId === reply.id}
                   className="shrink-0 text-[10px] text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-40"
                 >
-                  {deletingId === reply.id ? '...' : '삭제'}
+                  {deletingId === reply.id ? '·' : '삭제'}
                 </button>
               )}
             </div>
           ))}
 
           {open && canReply && (
-            <form onSubmit={handleSubmit} className="flex gap-1.5 pt-1">
+            <form onSubmit={handleSubmit} className="flex gap-1 pt-0.5">
               <input
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="댓글 달기..."
+                placeholder="댓글..."
                 maxLength={300}
-                className="flex-1 min-w-0 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs dark:border-gray-800 dark:bg-gray-950 focus:outline-none focus:border-amber-300"
+                className="flex-1 min-w-0 rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] dark:border-gray-800 dark:bg-gray-950 focus:outline-none focus:border-amber-300"
               />
               <button
                 type="submit"
                 disabled={!text.trim() || submitting}
-                className="shrink-0 rounded-md bg-gray-900 px-2.5 py-1 text-xs font-bold text-white disabled:opacity-40 dark:bg-gray-100 dark:text-gray-950"
+                className="shrink-0 rounded bg-gray-900 px-2 py-0.5 text-[11px] font-bold text-white disabled:opacity-40 dark:bg-gray-100 dark:text-gray-950"
               >
-                {submitting ? '...' : '등록'}
+                {submitting ? '·' : '등록'}
               </button>
             </form>
           )}

@@ -45,11 +45,11 @@ export default function RecommendButton({ reviewId, initialCount, initialRecomme
   }
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-0.5">
       <button
         onClick={handleClick}
         disabled={!canRecommend || loading}
-        className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold transition-colors ${
+        className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold transition-colors ${
           recommended
             ? 'border-amber-300 bg-amber-50 text-amber-500 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
             : canRecommend
@@ -57,9 +57,8 @@ export default function RecommendButton({ reviewId, initialCount, initialRecomme
               : 'border-gray-100 text-gray-300 dark:border-gray-900 dark:text-gray-700 cursor-default'
         }`}
       >
-        <span>★</span>
-        <span>{loading ? '...' : '추천'}</span>
-        <span className="tabular-nums">{count}명</span>
+        <span className="text-[10px]">♥</span>
+        <span className="tabular-nums">{loading ? '·' : count}</span>
       </button>
       {errorMsg && (
         <span className="text-[10px] text-red-400">{errorMsg}</span>
