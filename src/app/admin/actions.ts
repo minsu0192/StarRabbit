@@ -28,7 +28,7 @@ function requireServiceRole() {
 export async function updateTopNotice(formData: FormData) {
   const user = await requireAdmin();
   const service = requireServiceRole();
-  const notice = nonEmpty(formData.get('notice')).slice(0, 120);
+  const notice = nonEmpty(formData.get('notice')).slice(0, 500);
 
   const { error } = await service
     .from('site_settings')

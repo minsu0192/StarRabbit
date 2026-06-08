@@ -287,6 +287,14 @@ export async function getWebtoons(
         pageResult = await runPageQuery(false, 'count');
       }
     }
+    if (!pageResult.error) {
+      const cacheRows = (pageResult.data ?? []) as WebtoonRowData[];
+      const cacheLooksEmpty = cacheRows.length > 0
+        && cacheRows.every((row) => Number(row.cached_review_count ?? 0) === 0);
+      if (cacheLooksEmpty) {
+        pageResult = { ...pageResult, data: null, error: { message: 'popular cache is empty' } } as typeof pageResult;
+      }
+    }
     if (pageResult.error) {
       const reviewRows = await fetch(
         `${supabaseUrl}/rest/v1/reviews?select=webtoon_id,score`,

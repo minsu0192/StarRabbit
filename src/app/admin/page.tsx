@@ -174,11 +174,12 @@ export default async function AdminPage({ searchParams }: AdminProps) {
             <textarea
               name="notice"
               defaultValue={notice?.value ?? ''}
-              maxLength={120}
-              rows={3}
-              placeholder="홈 상단에 보여줄 공지"
+              maxLength={500}
+              rows={5}
+              placeholder="홈 상단에 보여줄 공지. 줄바꿈이 그대로 표시됩니다."
               className="w-full rounded-md border border-gray-200 bg-transparent px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-gray-800"
             />
+            <p className="text-[11px] text-gray-400">최대 500자, 줄바꿈 표시 가능</p>
             <button className="rounded-md bg-gray-950 px-3 py-2 text-xs font-bold text-white dark:bg-white dark:text-gray-950">
               공지 저장
             </button>
