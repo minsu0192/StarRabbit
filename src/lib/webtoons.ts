@@ -250,10 +250,10 @@ export async function getWebtoons(
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const apiKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  // 기본순/인기순은 DB의 리뷰 수 캐시로 직접 페이지네이션한다.
+  // 인기순은 DB의 리뷰 수/평균 점수 캐시로 직접 페이지네이션한다.
   // 전체 작품을 Worker 메모리로 가져오지 않으므로 뒤쪽 페이지도 유지되고 CPU 사용도 작다.
-  if ((sort === 'featured' || sort === 'popular') && !origin) {
-    const runPageQuery = async (includeSources: boolean, useReviewCountCache: boolean) => {
+  if (sort === 'popular' && !origin) {
+    const runPageQuery = async (includeSources: boolean, cacheSort: 'full' | 'count' | 'none') => {
       const selectClause = includeSources
         ? platform && VALID_PLATFORMS.includes(platform)
           ? `*, webtoon_sources!inner(*)`
@@ -267,18 +267,30 @@ export async function getWebtoons(
       if (status && VALID_STATUSES.includes(status)) q = q.eq('status', status);
       if (genre && VALID_GENRES.includes(genre)) q = q.eq('genre', genre);
       q = applyInitialFilter(q, initial);
-      if (useReviewCountCache) q = q.order('cached_review_count', { ascending: false });
+      if (cacheSort === 'full') {
+        q = q
+          .order('cached_review_count', { ascending: false })
+          .order('cached_avg_score', { ascending: false, nullsFirst: false });
+      } else if (cacheSort === 'count') {
+        q = q.order('cached_review_count', { ascending: false });
+      }
       return q.order('title', { ascending: true }).range(from, to);
     };
 
-    let pageResult = await runPageQuery(true, true);
+    let pageResult = await runPageQuery(true, 'full');
     if (pageResult.error?.message?.includes('webtoon_sources')) {
-      pageResult = await runPageQuery(false, true);
+      pageResult = await runPageQuery(false, 'full');
     }
     if (pageResult.error) {
-      pageResult = await runPageQuery(true, false);
+      pageResult = await runPageQuery(true, 'count');
       if (pageResult.error?.message?.includes('webtoon_sources')) {
-        pageResult = await runPageQuery(false, false);
+        pageResult = await runPageQuery(false, 'count');
+      }
+    }
+    if (pageResult.error) {
+      pageResult = await runPageQuery(true, 'none');
+      if (pageResult.error?.message?.includes('webtoon_sources')) {
+        pageResult = await runPageQuery(false, 'none');
       }
     }
 

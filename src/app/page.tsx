@@ -20,7 +20,7 @@ interface Props {
 export default async function Home({ searchParams }: Props) {
   const { sort, platform, status, page, size, initial, genre } = await searchParams;
   const supabase = await createClient();
-  const sortOption = (['featured', 'score', 'popular', 'weekly_score', 'weekly_comments', 'monthly_score', 'monthly_popular', 'yearly_score', 'yearly_popular', 'latest'].includes(sort ?? '') ? sort : 'featured') as SortOption;
+  const sortOption = (['score', 'popular', 'weekly_score', 'weekly_comments', 'monthly_score', 'monthly_popular', 'yearly_score', 'yearly_popular'].includes(sort ?? '') ? sort : 'popular') as SortOption;
   const currentPage = Math.max(Number(page ?? '1') || 1, 1);
   const pageSize = Number(size ?? '20') || 20;
   const [
@@ -49,7 +49,7 @@ export default async function Home({ searchParams }: Props) {
   const statusLabel = status === 'ongoing' ? '연재중' : status === 'completed' ? '완결' : null;
   const pageHref = (nextPage: number) => {
     const params = new URLSearchParams();
-    if (sort && sort !== 'featured') params.set('sort', sort);
+    if (sortOption !== 'popular') params.set('sort', sortOption);
     if (platform) params.set('platform', platform);
     if (status) params.set('status', status);
     if (initial) params.set('initial', initial);

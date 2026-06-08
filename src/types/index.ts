@@ -11,6 +11,7 @@ export interface Webtoon {
   status: Status | null;
   created_at: string;
   cached_review_count?: number;
+  cached_avg_score?: number | null;
 }
 
 export interface WebtoonSource {

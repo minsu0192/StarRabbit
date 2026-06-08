@@ -5,19 +5,17 @@ import Link from 'next/link';
 import { SortOption } from '@/types';
 
 const SORTS = [
-  { value: 'featured' as SortOption, label: '기본순' },
-  { value: 'score' as SortOption, label: '평점순' },
   { value: 'popular' as SortOption, label: '인기순' },
-  { value: 'latest' as SortOption, label: '최신순' },
+  { value: 'score' as SortOption, label: '평점순' },
 ];
 
 export default function SortChips() {
   const searchParams = useSearchParams();
-  const current = (searchParams.get('sort') ?? 'featured') as SortOption;
+  const current = (searchParams.get('sort') ?? 'popular') as SortOption;
 
   function href(value: SortOption) {
     const params = new URLSearchParams(searchParams.toString());
-    if (value === 'featured') {
+    if (value === 'popular') {
       params.delete('sort');
     } else {
       params.set('sort', value);

@@ -1,9 +1,16 @@
 -- webtoons 테이블에 리뷰 수 캐시 컬럼 추가
 ALTER TABLE webtoons ADD COLUMN IF NOT EXISTS cached_review_count int NOT NULL DEFAULT 0;
+ALTER TABLE webtoons ADD COLUMN IF NOT EXISTS cached_avg_score numeric(3,1);
 
 -- 기존 리뷰 수 반영
 UPDATE webtoons
-SET cached_review_count = (SELECT COUNT(*) FROM reviews WHERE reviews.webtoon_id = webtoons.id);
+SET
+  cached_review_count = (SELECT COUNT(*) FROM reviews WHERE reviews.webtoon_id = webtoons.id),
+  cached_avg_score = (
+    SELECT ROUND(AVG(score)::numeric, 1)
+    FROM reviews
+    WHERE reviews.webtoon_id = webtoons.id
+  );
 
 -- reviews INSERT/UPDATE/DELETE 시 자동 갱신 트리거
 CREATE OR REPLACE FUNCTION sync_webtoon_review_count()
@@ -13,7 +20,13 @@ DECLARE
 BEGIN
   target_id := COALESCE(NEW.webtoon_id, OLD.webtoon_id);
   UPDATE webtoons
-  SET cached_review_count = (SELECT COUNT(*) FROM reviews WHERE webtoon_id = target_id)
+  SET
+    cached_review_count = (SELECT COUNT(*) FROM reviews WHERE webtoon_id = target_id),
+    cached_avg_score = (
+      SELECT ROUND(AVG(score)::numeric, 1)
+      FROM reviews
+      WHERE webtoon_id = target_id
+    )
   WHERE id = target_id;
   RETURN COALESCE(NEW, OLD);
 END;
