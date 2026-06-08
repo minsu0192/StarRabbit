@@ -4,6 +4,7 @@ import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 import AuthFeedback from "@/components/AuthFeedback";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import AppThemeController from "@/components/AppThemeController";
 
 export const metadata: Metadata = {
   title: "별토끼 — 진짜 웹툰 평점",
@@ -25,6 +26,7 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
       </head>
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)] antialiased pb-16">
+        <AppThemeController />
         <GoogleAnalytics />
         <Suspense>
           <AuthFeedback />

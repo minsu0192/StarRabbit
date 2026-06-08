@@ -88,21 +88,21 @@ export default function ReplySection({ reviewId, initialReplies, currentUserId, 
     <div className="mt-1">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+        className="text-[10px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
       >
         {replyCount > 0 ? `댓글 ${replyCount}` : canReply ? '댓글 달기' : ''}
         {canReply && replyCount > 0 && <span className="ml-1 text-gray-300 dark:text-gray-700">{open ? '닫기' : '+'}</span>}
       </button>
 
       {(open || replyCount > 0) && (
-        <div className="mt-1.5 space-y-1.5 rounded-md bg-gray-50 px-2 py-1.5 dark:bg-gray-900/50">
+        <div className="mt-1 space-y-1 rounded-md bg-gray-50/70 px-2 py-1.5 dark:bg-gray-900/40">
           {replies.map((reply) => (
             <div key={reply.id} className="flex items-start gap-1 group">
               <div className="flex-1 min-w-0">
-                <span className="text-[11px] font-semibold text-gray-500 mr-1">
+                <span className="text-[10px] font-semibold text-gray-500 mr-1">
                   {reply.profiles?.nickname ?? '익명'}
                 </span>
-                <span className="text-[11px] text-gray-600 dark:text-gray-400 break-words">
+                <span className="text-[10px] text-gray-600 dark:text-gray-400 break-words">
                   {reply.comment}
                 </span>
               </div>
@@ -125,12 +125,12 @@ export default function ReplySection({ reviewId, initialReplies, currentUserId, 
                 onChange={(e) => setText(e.target.value)}
                 placeholder="댓글..."
                 maxLength={300}
-                className="flex-1 min-w-0 rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] dark:border-gray-800 dark:bg-gray-950 focus:outline-none focus:border-amber-300"
+                className="flex-1 min-w-0 rounded border border-gray-200 bg-white px-2 py-0.5 text-[10px] dark:border-gray-800 dark:bg-gray-950 focus:outline-none focus:border-amber-300"
               />
               <button
                 type="submit"
                 disabled={!text.trim() || submitting}
-                className="shrink-0 rounded bg-gray-900 px-2 py-0.5 text-[11px] font-bold text-white disabled:opacity-40 dark:bg-gray-100 dark:text-gray-950"
+                className="shrink-0 rounded bg-gray-900 px-2 py-0.5 text-[10px] font-bold text-white disabled:opacity-40 dark:bg-gray-100 dark:text-gray-950"
               >
                 {submitting ? '·' : '등록'}
               </button>

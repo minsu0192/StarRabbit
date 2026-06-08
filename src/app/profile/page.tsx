@@ -11,6 +11,7 @@ import TierBunny from '@/components/TierBunny';
 import LevelUpPopup from '@/components/LevelUpPopup';
 import { POINT_LEVELS, POINT_RULES, getPointLevel } from '@/lib/points';
 import PointHistoryModal from '@/components/PointHistoryModal';
+import ProfilePerksPanel from '@/components/ProfilePerksPanel';
 
 function getRank(total: number): { label: string; color: string; next: string; needed: number | null } {
   if (total >= 1000) return { label: '별토끼', color: 'text-amber-500', next: '무지개토끼', needed: null };
@@ -142,6 +143,8 @@ export default async function ProfilePage() {
           )}
         </div>
       </section>
+
+      <ProfilePerksPanel points={points} />
 
       {/* 스타 히스토리 */}
       {pointHistory.length > 0 && (
