@@ -71,9 +71,13 @@ html[data-app-theme="excel"] body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+html[data-app-theme="excel"] {
+  font-size: 13px;
+}
+
 html[data-app-theme="excel"] header,
 html[data-app-theme="excel"] nav {
-  background: #f4f7f3 !important;
+  background: #f6f8f5 !important;
   border-color: #aebdaa !important;
   backdrop-filter: none !important;
 }
@@ -90,6 +94,8 @@ html[data-app-theme="excel"] select {
 
 html[data-app-theme="excel"] section,
 html[data-app-theme="excel"] article,
+html[data-app-theme="excel"] a,
+html[data-app-theme="excel"] li,
 html[data-app-theme="excel"] input,
 html[data-app-theme="excel"] textarea,
 html[data-app-theme="excel"] select {
@@ -111,6 +117,44 @@ html[data-app-theme="excel"] .font-black {
 
 html[data-app-theme="excel"] [aria-label="별토끼 마스코트"] {
   display: none !important;
+}
+
+html[data-app-theme="excel"] span:has([aria-label="별토끼 마스코트"]) {
+  display: none !important;
+}
+
+html[data-app-theme="excel"] header a,
+html[data-app-theme="excel"] nav a,
+html[data-app-theme="excel"] header button,
+html[data-app-theme="excel"] nav button {
+  background-color: transparent !important;
+  color: #3f4f3d !important;
+}
+
+html[data-app-theme="excel"] h1 {
+  font-size: 1.15rem !important;
+}
+
+html[data-app-theme="excel"] h2,
+html[data-app-theme="excel"] .text-lg,
+html[data-app-theme="excel"] .text-xl,
+html[data-app-theme="excel"] .text-2xl,
+html[data-app-theme="excel"] .text-4xl {
+  font-size: 1rem !important;
+}
+
+html[data-app-theme="excel"] .text-\[15px\] {
+  font-size: 0.92rem !important;
+}
+
+html[data-app-theme="excel"] .text-sm {
+  font-size: 0.82rem !important;
+}
+
+html[data-app-theme="excel"] .text-xs,
+html[data-app-theme="excel"] .text-\[11px\],
+html[data-app-theme="excel"] .text-\[10px\] {
+  font-size: 0.72rem !important;
 }
 
 html[data-app-theme="excel"] [class*="text-amber"],
@@ -135,6 +179,16 @@ html[data-app-theme="excel"] [class*="bg-orange"] {
 
 html[data-app-theme="excel"] button {
   border-color: #9eae9a !important;
+}
+
+html[data-app-theme="excel"] a:hover,
+html[data-app-theme="excel"] button:hover {
+  background-color: #eef4ec !important;
+  color: #234f28 !important;
+}
+
+html[data-app-theme="excel"] [class*="border-l-"] {
+  border-left-color: #8aa084 !important;
 }
 
 html[data-app-theme="field"] body {
@@ -173,11 +227,53 @@ html[data-app-theme="field"] button {
   border-color: #b9dca9;
 }
 
+html[data-app-theme="field"] a:hover,
+html[data-app-theme="field"] button:hover {
+  background-color: #edf8e8 !important;
+  color: #244f22 !important;
+}
+
 html[data-app-theme="moon"] body {
-  background:
-    radial-gradient(circle at 82% 8%, rgba(254, 240, 138, 0.14) 0 70px, transparent 72px),
-    #111827;
+  background: #111827;
   color: #f1f5f9;
+}
+
+html[data-app-theme="moon"] body::before {
+  content: "";
+  position: fixed;
+  top: 68px;
+  right: max(18px, calc((100vw - 672px) / 2 + 24px));
+  z-index: 0;
+  width: 112px;
+  height: 112px;
+  pointer-events: none;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 35%, #fff7c2 0 22px, #f5d96f 23px 68px, rgba(245, 217, 111, 0.16) 69px 78px, transparent 79px);
+  opacity: 0.42;
+}
+
+html[data-app-theme="moon"] body::after {
+  content: "";
+  position: fixed;
+  top: 106px;
+  right: max(60px, calc((100vw - 672px) / 2 + 66px));
+  z-index: 0;
+  width: 21px;
+  height: 18px;
+  pointer-events: none;
+  border-radius: 50% 50% 45% 45%;
+  background: #2a2415;
+  box-shadow:
+    -5px -11px 0 -3px #2a2415,
+    4px -10px 0 -3px #2a2415,
+    14px 3px 0 -6px #2a2415,
+    19px -10px 0 -8px #2a2415;
+  opacity: 0.5;
+}
+
+html[data-app-theme="moon"] body > * {
+  position: relative;
+  z-index: 1;
 }
 
 html[data-app-theme="moon"] header,
@@ -219,4 +315,17 @@ html[data-app-theme="moon"] [class*="text-amber"] {
 
 html[data-app-theme="moon"] [class*="bg-amber"] {
   background-color: #374151 !important;
+}
+
+html[data-app-theme="moon"] a:hover,
+html[data-app-theme="moon"] button:hover {
+  background-color: #24324d !important;
+  color: #f8fafc !important;
+}
+
+html[data-app-theme="moon"] [class*="hover\\:bg-white"]:hover,
+html[data-app-theme="moon"] [class*="hover\\:bg-amber"]:hover,
+html[data-app-theme="moon"] [class*="hover\\:border-amber"]:hover {
+  background-color: #24324d !important;
+  border-color: #52627e !important;
 }
