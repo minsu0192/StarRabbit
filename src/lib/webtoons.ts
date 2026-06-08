@@ -8,7 +8,9 @@ const VALID_GENRES = ['로맨스', '드라마', '판타지', '액션', '무협',
 const DEFAULT_LIST_LIMIT = 20;
 const VALID_LIST_LIMITS = [10, 20, 50, 100];
 const SEARCH_LIMIT = 80;
-const LIST_CANDIDATE_LIMIT = 7000;
+// Cloudflare Workers CPU 한도 안에서 정렬한다.
+// 리뷰가 있는 작품은 아래 reviewedIds 쿼리로 별도 병합되므로 랭킹 대상에서 빠지지 않는다.
+const LIST_CANDIDATE_LIMIT = 1000;
 const VALID_SORTS: SortOption[] = ['featured', 'score', 'popular', 'daily_score', 'daily_popular', 'weekly_score', 'weekly_comments', 'monthly_score', 'monthly_popular', 'yearly_score', 'yearly_popular', 'latest'];
 const INITIAL_RANGES: Record<string, [string, string | null]> = {
   'ㄱ': ['가', '나'],
