@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { isAdminEmail } from '@/lib/admin';
 import BunnyMascot from './BunnyMascot';
 import LoginButton from './LoginButton';
+import ThemeMenu from './ThemeMenu';
 
 export default async function Header() {
   const supabase = await createClient();
@@ -66,6 +67,7 @@ export default async function Header() {
               신청
             </Link>
           )}
+          <ThemeMenu />
           <LoginButton user={userInfo} compact />
         </div>
       </div>

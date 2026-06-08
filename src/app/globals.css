@@ -63,18 +63,18 @@ textarea {
 
 html[data-app-theme="excel"] body {
   background:
-    linear-gradient(#eef6ed 1px, transparent 1px),
-    linear-gradient(90deg, #eef6ed 1px, transparent 1px),
+    linear-gradient(#e3ebe1 1px, transparent 1px),
+    linear-gradient(90deg, #e3ebe1 1px, transparent 1px),
     #ffffff;
   background-size: 28px 28px;
-  color: #1f2937;
+  color: #202020;
   font-family: Arial, Helvetica, sans-serif;
 }
 
 html[data-app-theme="excel"] header,
 html[data-app-theme="excel"] nav {
-  background: #f3f7f0 !important;
-  border-color: #bfd3b7 !important;
+  background: #f4f7f3 !important;
+  border-color: #aebdaa !important;
   backdrop-filter: none !important;
 }
 
@@ -85,7 +85,15 @@ html[data-app-theme="excel"] form,
 html[data-app-theme="excel"] input,
 html[data-app-theme="excel"] textarea,
 html[data-app-theme="excel"] select {
-  border-color: #c8d9c0 !important;
+  border-color: #bdc8ba !important;
+}
+
+html[data-app-theme="excel"] section,
+html[data-app-theme="excel"] article,
+html[data-app-theme="excel"] input,
+html[data-app-theme="excel"] textarea,
+html[data-app-theme="excel"] select {
+  background-color: rgba(255, 255, 255, 0.96) !important;
 }
 
 html[data-app-theme="excel"] .rounded-md,
@@ -101,20 +109,50 @@ html[data-app-theme="excel"] .font-black {
   font-weight: 700 !important;
 }
 
+html[data-app-theme="excel"] [aria-label="별토끼 마스코트"] {
+  display: none !important;
+}
+
+html[data-app-theme="excel"] [class*="text-amber"],
+html[data-app-theme="excel"] [class*="text-blue"],
+html[data-app-theme="excel"] [class*="text-red"],
+html[data-app-theme="excel"] [class*="text-fuchsia"],
+html[data-app-theme="excel"] [class*="text-violet"],
+html[data-app-theme="excel"] [class*="text-rose"],
+html[data-app-theme="excel"] [class*="text-orange"] {
+  color: #356b3a !important;
+}
+
+html[data-app-theme="excel"] [class*="bg-amber"],
+html[data-app-theme="excel"] [class*="bg-blue"],
+html[data-app-theme="excel"] [class*="bg-red"],
+html[data-app-theme="excel"] [class*="bg-fuchsia"],
+html[data-app-theme="excel"] [class*="bg-violet"],
+html[data-app-theme="excel"] [class*="bg-rose"],
+html[data-app-theme="excel"] [class*="bg-orange"] {
+  background-color: #edf3eb !important;
+}
+
+html[data-app-theme="excel"] button {
+  border-color: #9eae9a !important;
+}
+
 html[data-app-theme="field"] body {
-  background: #f4fbef;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.72)),
+    repeating-linear-gradient(165deg, #dcefd1 0 12px, #eaf6e3 12px 24px);
   color: #172016;
 }
 
 html[data-app-theme="field"] header,
 html[data-app-theme="field"] nav {
-  background: rgba(239, 250, 231, 0.95) !important;
-  border-color: #c9e6bd !important;
+  background: rgba(244, 251, 239, 0.96) !important;
+  border-color: #abd49a !important;
 }
 
 html[data-app-theme="field"] section,
 html[data-app-theme="field"] article {
-  border-color: #d8edce !important;
+  border-color: #c9e6bd !important;
 }
 
 html[data-app-theme="field"] .bg-amber-50,
@@ -123,25 +161,62 @@ html[data-app-theme="field"] .bg-white {
   background-color: #ffffff !important;
 }
 
+html[data-app-theme="field"] [class*="text-amber"] {
+  color: #4f8a3f !important;
+}
+
+html[data-app-theme="field"] [class*="bg-amber"] {
+  background-color: #e2f3d8 !important;
+}
+
+html[data-app-theme="field"] button {
+  border-color: #b9dca9;
+}
+
 html[data-app-theme="moon"] body {
-  background: #111827;
-  color: #f8fafc;
+  background:
+    radial-gradient(circle at 82% 8%, rgba(254, 240, 138, 0.14) 0 70px, transparent 72px),
+    #111827;
+  color: #f1f5f9;
 }
 
 html[data-app-theme="moon"] header,
 html[data-app-theme="moon"] nav {
-  background: rgba(15, 23, 42, 0.95) !important;
-  border-color: #334155 !important;
+  background: rgba(17, 24, 39, 0.96) !important;
+  border-color: #394866 !important;
 }
 
 html[data-app-theme="moon"] section,
 html[data-app-theme="moon"] article,
 html[data-app-theme="moon"] li {
-  border-color: #1f2937 !important;
+  border-color: #2c3b57 !important;
 }
 
 html[data-app-theme="moon"] .bg-amber-50,
 html[data-app-theme="moon"] .bg-gray-50,
 html[data-app-theme="moon"] .bg-white {
-  background-color: #1e293b !important;
+  background-color: #1b2941 !important;
+}
+
+html[data-app-theme="moon"] input,
+html[data-app-theme="moon"] textarea,
+html[data-app-theme="moon"] select {
+  background-color: #172033 !important;
+  border-color: #394866 !important;
+  color: #f1f5f9 !important;
+}
+
+html[data-app-theme="moon"] [class*="text-gray-950"],
+html[data-app-theme="moon"] [class*="text-gray-900"],
+html[data-app-theme="moon"] [class*="text-gray-700"],
+html[data-app-theme="moon"] [class*="text-gray-600"] {
+  color: #dbeafe !important;
+}
+
+html[data-app-theme="moon"] [class*="text-amber"] {
+  color: #fde68a !important;
+}
+
+html[data-app-theme="moon"] [class*="bg-amber"] {
+  background-color: #374151 !important;
 }
