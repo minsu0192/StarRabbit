@@ -110,9 +110,14 @@ html[data-app-theme="excel"] .rounded-full {
 }
 
 html[data-app-theme="excel"] h1,
-html[data-app-theme="excel"] h2,
-html[data-app-theme="excel"] .font-black {
-  font-weight: 700 !important;
+html[data-app-theme="excel"] h2 {
+  font-weight: 600 !important;
+}
+
+html[data-app-theme="excel"] .font-black,
+html[data-app-theme="excel"] .font-bold,
+html[data-app-theme="excel"] .font-semibold {
+  font-weight: 500 !important;
 }
 
 html[data-app-theme="excel"] [aria-label="별토끼 마스코트"] {
@@ -167,7 +172,7 @@ html[data-app-theme="excel"] [class*="text-rose"],
 html[data-app-theme="excel"] [class*="text-orange"],
 html[data-app-theme="excel"] [class*="text-white"],
 html[data-app-theme="excel"] [class*="text-black"] {
-  color: #356b3a !important;
+  color: #555f55 !important;
 }
 
 html[data-app-theme="excel"] [class*="bg-amber"],
@@ -186,10 +191,10 @@ html[data-app-theme="excel"] span[class*="bg-green"],
 html[data-app-theme="excel"] span[class*="bg-amber"],
 html[data-app-theme="excel"] span[class*="bg-red"],
 html[data-app-theme="excel"] span[class*="bg-\\["] {
-  border: 1px solid #b9c8b5 !important;
-  background-color: #f4f7f3 !important;
-  color: #356b3a !important;
-  font-weight: 700 !important;
+  border: 1px solid #c6ccc4 !important;
+  background-color: #f3f4f2 !important;
+  color: #5d665d !important;
+  font-weight: 500 !important;
 }
 
 html[data-app-theme="excel"] button {
@@ -198,8 +203,8 @@ html[data-app-theme="excel"] button {
 
 html[data-app-theme="excel"] a:hover,
 html[data-app-theme="excel"] button:hover {
-  background-color: #eef4ec !important;
-  color: #234f28 !important;
+  background-color: #eef0ed !important;
+  color: #333833 !important;
 }
 
 html[data-app-theme="excel"] [class*="border-l-"] {
