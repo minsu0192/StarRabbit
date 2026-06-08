@@ -159,22 +159,37 @@ html[data-app-theme="excel"] .text-\[10px\] {
 
 html[data-app-theme="excel"] [class*="text-amber"],
 html[data-app-theme="excel"] [class*="text-blue"],
+html[data-app-theme="excel"] [class*="text-green"],
 html[data-app-theme="excel"] [class*="text-red"],
 html[data-app-theme="excel"] [class*="text-fuchsia"],
 html[data-app-theme="excel"] [class*="text-violet"],
 html[data-app-theme="excel"] [class*="text-rose"],
-html[data-app-theme="excel"] [class*="text-orange"] {
+html[data-app-theme="excel"] [class*="text-orange"],
+html[data-app-theme="excel"] [class*="text-white"],
+html[data-app-theme="excel"] [class*="text-black"] {
   color: #356b3a !important;
 }
 
 html[data-app-theme="excel"] [class*="bg-amber"],
 html[data-app-theme="excel"] [class*="bg-blue"],
+html[data-app-theme="excel"] [class*="bg-green"],
 html[data-app-theme="excel"] [class*="bg-red"],
 html[data-app-theme="excel"] [class*="bg-fuchsia"],
 html[data-app-theme="excel"] [class*="bg-violet"],
 html[data-app-theme="excel"] [class*="bg-rose"],
-html[data-app-theme="excel"] [class*="bg-orange"] {
+html[data-app-theme="excel"] [class*="bg-orange"],
+html[data-app-theme="excel"] [class*="bg-\\["] {
   background-color: #edf3eb !important;
+}
+
+html[data-app-theme="excel"] span[class*="bg-green"],
+html[data-app-theme="excel"] span[class*="bg-amber"],
+html[data-app-theme="excel"] span[class*="bg-red"],
+html[data-app-theme="excel"] span[class*="bg-\\["] {
+  border: 1px solid #b9c8b5 !important;
+  background-color: #f4f7f3 !important;
+  color: #356b3a !important;
+  font-weight: 700 !important;
 }
 
 html[data-app-theme="excel"] button {
