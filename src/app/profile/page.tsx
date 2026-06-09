@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import Header from '@/components/Header';
 import SiteFooter from '@/components/SiteFooter';
@@ -43,7 +44,7 @@ export default async function ProfilePage() {
     : { data: null };
   const profile = profileWithPoints ?? profileFallback;
 
-  const [reviewsResult, pointHistoryResult] = await Promise.all([
+  const [reviewsResult, pointHistoryResult, equippedItemsResult] = await Promise.all([
     supabase
       .from('reviews')
       .select('*, webtoons(title, platform)')
@@ -55,10 +56,20 @@ export default async function ProfilePage() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(30),
+    supabase
+      .from('user_items')
+      .select('item_id, is_equipped, shop_items(name, type, costume_key)')
+      .eq('user_id', user.id)
+      .eq('is_equipped', true),
   ]);
 
   const reviews = reviewsResult.data;
   const pointHistory = pointHistoryResult.data ?? [];
+
+  type EquippedRow = { item_id: string; is_equipped: boolean; shop_items: { name: string; type: string; costume_key: string | null } | null };
+  const equippedItems = (equippedItemsResult.data ?? []) as unknown as EquippedRow[];
+  const equippedCostume = equippedItems.find((i) => i.shop_items?.type === 'costume')?.shop_items?.costume_key ?? null;
+  const equippedTitle = equippedItems.find((i) => i.shop_items?.type === 'title')?.shop_items?.name ?? null;
 
   const nickname = profile?.nickname ?? '유저';
   const totalRecommends = profile?.total_recommends ?? 0;
@@ -85,11 +96,16 @@ export default async function ProfilePage() {
       <section className="px-4 py-6 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center gap-4">
           <div className="shrink-0">
-            <TierBunny tier={pointLevel.label} size={56} />
+            <TierBunny tier={pointLevel.label} size={56} costume={equippedCostume} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-lg font-black">{nickname}</span>
+              {equippedTitle && (
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                  {equippedTitle}
+                </span>
+              )}
               <span className={`text-sm font-bold ${rank.color}`}>{rank.label}</span>
             </div>
             <p className="text-xs text-gray-400 mt-0.5">
@@ -126,7 +142,12 @@ export default async function ProfilePage() {
               ? '최고 등급입니다'
               : `${pointLevel.nextLabel}까지 ${pointLevel.remaining.toLocaleString()} 스타 남음`}
           </p>
-          <PointHistoryModal />
+          <div className="flex items-center gap-3">
+            <Link href="/shop" className="text-xs font-bold text-amber-600 hover:text-amber-700 dark:text-amber-400">
+              상점 →
+            </Link>
+            <PointHistoryModal />
+          </div>
         </div>
         <div className={`mt-4 flex items-center gap-2 rounded-xl border px-3 py-3 ${
           checkedToday
