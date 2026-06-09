@@ -1,5 +1,3 @@
-export const runtime = 'edge';
-
 import { createClient } from '@/lib/supabase/server';
 import Header from '@/components/Header';
 import SiteFooter from '@/components/SiteFooter';
@@ -29,7 +27,17 @@ function daysLeft(expiresAt: string): number {
   return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86_400_000);
 }
 
-export default async function ShopPage() {
+const ERR_MSG: Record<string, string> = {
+  not_found:    '상품을 찾을 수 없어요.',
+  insufficient: '포인트가 부족해요.',
+  already_owned:'이미 보유한 아이템이에요.',
+  db:           'DB 오류가 발생했어요.',
+  login:        '로그인이 필요해요.',
+  unknown:      '알 수 없는 오류가 발생했어요.',
+};
+
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string; msg?: string }> }) {
+  const { ok, err, msg } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -85,6 +93,18 @@ export default async function ShopPage() {
           </div>
         </div>
       </section>
+
+      {/* 구매 결과 메시지 */}
+      {ok && (
+        <div className="mx-4 mt-3 rounded-lg bg-green-50 border border-green-200 px-4 py-2.5 text-sm font-bold text-green-700 dark:bg-green-950/30 dark:border-green-800 dark:text-green-400">
+          구매 완료!
+        </div>
+      )}
+      {err && (
+        <div className="mx-4 mt-3 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-sm font-bold text-red-600 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400">
+          {ERR_MSG[err] ?? ERR_MSG.unknown}{msg ? ` (${msg})` : ''}
+        </div>
+      )}
 
       {/* 코스튬 */}
       {costumes.length > 0 && (

@@ -15,16 +15,17 @@ export async function purchaseItem(formData: FormData) {
   if (!itemId) return;
 
   const { supabase, user } = await requireUser();
-  if (!user) redirect('/shop');
+  if (!user) redirect('/shop?err=login');
 
-  const { data: result } = await supabase.rpc('spend_points', { p_user_id: user.id, p_item_id: itemId });
+  const { data: result, error } = await supabase.rpc('spend_points', { p_user_id: user.id, p_item_id: itemId });
+
+  if (error) redirect(`/shop?err=db&msg=${encodeURIComponent(error.message)}`);
 
   revalidatePath('/shop');
   revalidatePath('/profile');
 
-  if (result === 'ok') {
-    redirect('/shop');
-  }
+  if (result === 'ok') redirect('/shop?ok=1');
+  redirect(`/shop?err=${result ?? 'unknown'}`);
 }
 
 export async function equipItem(formData: FormData) {
