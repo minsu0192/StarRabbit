@@ -7,33 +7,51 @@ export default function BunnyMascot({ size = 96 }: { size?: number }) {
       xmlns="http://www.w3.org/2000/svg"
       aria-label="별토끼 마스코트"
     >
-      {/* 왼쪽 귀 */}
-      <rect x="18" y="2" width="15" height="44" rx="7.5" fill="#f1f5f9" stroke="#e2e8f0" strokeWidth="1.2"/>
-      <rect x="22" y="6" width="7" height="32" rx="3.5" fill="#fda4af"/>
+      {/* 왼쪽 귀 — 살짝 바깥으로 기울임 */}
+      <g transform="rotate(-7, 27, 48)">
+        <rect x="18" y="3" width="17" height="46" rx="8.5" fill="#fce7f3" stroke="#fbcfe8" strokeWidth="1.2"/>
+        <rect x="22" y="8" width="9" height="34" rx="4.5" fill="#f9a8d4"/>
+      </g>
       {/* 오른쪽 귀 */}
-      <rect x="67" y="2" width="15" height="44" rx="7.5" fill="#f1f5f9" stroke="#e2e8f0" strokeWidth="1.2"/>
-      <rect x="71" y="6" width="7" height="32" rx="3.5" fill="#fda4af"/>
+      <g transform="rotate(7, 73, 48)">
+        <rect x="65" y="3" width="17" height="46" rx="8.5" fill="#fce7f3" stroke="#fbcfe8" strokeWidth="1.2"/>
+        <rect x="69" y="8" width="9" height="34" rx="4.5" fill="#f9a8d4"/>
+      </g>
+
       {/* 얼굴 */}
-      <circle cx="50" cy="62" r="32" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1.2"/>
+      <circle cx="50" cy="66" r="34" fill="#fffbfc" stroke="#fce7f3" strokeWidth="1.5"/>
+
       {/* 볼터치 */}
-      <circle cx="30" cy="66" r="6" fill="#fda4af" opacity="0.35"/>
-      <circle cx="70" cy="66" r="6" fill="#fda4af" opacity="0.35"/>
+      <ellipse cx="27" cy="71" rx="9" ry="6" fill="#fda4af" opacity="0.3"/>
+      <ellipse cx="73" cy="71" rx="9" ry="6" fill="#fda4af" opacity="0.3"/>
+
       {/* 눈 */}
-      <circle cx="38" cy="57" r="4.5" fill="#1e293b"/>
-      <circle cx="62" cy="57" r="4.5" fill="#1e293b"/>
-      <circle cx="39.5" cy="55.5" r="1.8" fill="white"/>
-      <circle cx="63.5" cy="55.5" r="1.8" fill="white"/>
-      {/* 코 */}
-      <ellipse cx="50" cy="67" rx="3" ry="2.2" fill="#fda4af"/>
-      {/* 입 */}
-      <path d="M45 71.5 Q50 76 55 71.5" stroke="#cbd5e1" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-      {/* 별 */}
-      <polygon
-        points="50,82 52.8,89.5 60.5,89.5 54.3,94 56.6,101.5 50,97.2 43.4,101.5 45.7,94 39.5,89.5 47.2,89.5"
-        fill="#fbbf24"
-        stroke="#f59e0b"
-        strokeWidth="0.8"
+      <circle cx="37" cy="59" r="7" fill="#1a1625"/>
+      <circle cx="63" cy="59" r="7" fill="#1a1625"/>
+      {/* 눈 반짝임 크게 */}
+      <circle cx="40" cy="56" r="3.2" fill="white"/>
+      <circle cx="66" cy="56" r="3.2" fill="white"/>
+      {/* 눈 반짝임 작게 */}
+      <circle cx="36" cy="63" r="1.4" fill="white" opacity="0.55"/>
+      <circle cx="62" cy="63" r="1.4" fill="white" opacity="0.55"/>
+
+      {/* 코 (하트) */}
+      <circle cx="47.5" cy="69.5" r="3.2" fill="#f9a8d4"/>
+      <circle cx="52.5" cy="69.5" r="3.2" fill="#f9a8d4"/>
+      <polygon points="44.5,69.5 55.5,69.5 50,76" fill="#f9a8d4"/>
+
+      {/* 입 (ω 모양) */}
+      <path
+        d="M43,79 Q46.5,85 50,80.5 Q53.5,85 57,79"
+        stroke="#f0abbc" strokeWidth="1.8" fill="none"
+        strokeLinecap="round" strokeLinejoin="round"
       />
+
+      {/* 반짝이 */}
+      <circle cx="83" cy="9" r="2.5" fill="#fbbf24" opacity="0.9"/>
+      <circle cx="83" cy="9" r="1" fill="white" opacity="0.6"/>
+      <circle cx="20" cy="14" r="1.8" fill="#fbbf24" opacity="0.55"/>
+      <circle cx="24" cy="8" r="1.2" fill="#fcd34d" opacity="0.45"/>
     </svg>
   );
 }

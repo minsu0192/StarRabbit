@@ -79,30 +79,30 @@ export default async function Home({ searchParams }: Props) {
         </a>
       )}
 
-      <section className="px-4 pb-4 pt-5">
+      <section className="px-4 pb-3 pt-3 sm:pb-4 sm:pt-5">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="mb-1 text-xs font-bold text-amber-600 dark:text-amber-400">WEBTOON REVIEW</p>
-            <h1 className="text-2xl font-black tracking-tight">진짜 점수가 보이는 웹툰 평점</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">1인 1평으로 점수 쏠림을 줄인 리뷰 목록</p>
+            <p className="mb-0.5 text-xs font-bold text-amber-600 dark:text-amber-400">WEBTOON REVIEW</p>
+            <h1 className="text-xl font-black tracking-tight sm:text-2xl">진짜 점수가 보이는 웹툰 평점</h1>
+            <p className="mt-0.5 hidden text-sm text-gray-500 sm:block dark:text-gray-400">1인 1평으로 점수 쏠림을 줄인 리뷰 목록</p>
           </div>
           <div className="hidden shrink-0 min-[420px]:block">
-            <BunnyMascot size={56} />
+            <BunnyMascot size={48} />
           </div>
         </div>
       </section>
 
-      <div className="px-4 mb-3">
+      <div className="px-4 mb-2">
         <SearchBar />
       </div>
 
-      <nav className="mb-3">
+      <nav className="mb-2">
         <Suspense>
           <SortChips />
         </Suspense>
       </nav>
 
-      <div className="mb-3">
+      <div className="mb-2">
         <Suspense>
           <FilterBar />
         </Suspense>

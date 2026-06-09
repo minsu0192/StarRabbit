@@ -295,8 +295,8 @@ function ReviewItem({
   currentUserId?: string | null;
   replies?: { id: string; review_id: string; comment: string; created_at: string; user_id: string; profiles: { nickname: string | null } | null }[];
 }) {
-  const points = review.profiles?.points ?? review.profiles?.total_recommends ?? 0;
-  const tier = getPointLevel(points);
+  const earnedPoints = review.profiles?.earned_points ?? review.profiles?.points ?? review.profiles?.total_recommends ?? 0;
+  const tier = getPointLevel(earnedPoints);
 
   return (
     <li className={isBest ? 'rounded-lg border border-amber-200 bg-white px-3 py-3 shadow-sm dark:border-amber-900/60 dark:bg-gray-950' : 'rounded-lg border border-gray-100 bg-white px-3 py-3 shadow-sm dark:border-gray-900 dark:bg-gray-950'}>

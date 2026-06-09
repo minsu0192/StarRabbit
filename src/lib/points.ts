@@ -30,8 +30,9 @@ export const POINT_LEVELS = [
   { label: '전설토끼', min: 50000, color: 'text-rose-500' },
 ];
 
-export function getPointLevel(points: number) {
-  const safePoints = Math.max(0, Math.floor(points));
+/** earned_points (누적 획득량) 기준 — 상점 소비 후에도 등급이 내려가지 않는다. */
+export function getPointLevel(earnedPoints: number) {
+  const safePoints = Math.max(0, Math.floor(earnedPoints));
   const current = [...POINT_LEVELS].reverse().find((level) => safePoints >= level.min) ?? POINT_LEVELS[0];
   const next = POINT_LEVELS.find((level) => level.min > safePoints) ?? null;
 

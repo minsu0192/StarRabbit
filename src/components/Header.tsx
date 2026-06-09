@@ -45,25 +45,25 @@ export default async function Header() {
         </Link>
         <div className="flex min-w-0 shrink-0 items-center gap-2">
           {user && (
-            <span className="hidden max-w-32 truncate text-xs font-semibold text-gray-500 min-[460px]:block">
+            <span className="hidden max-w-32 truncate text-xs font-semibold text-gray-500 sm:block">
               {nickname}님 반가워요
             </span>
           )}
           {isAdmin && (
-            <Link href="/admin" className="hidden text-xs font-semibold text-amber-600 transition-colors hover:text-amber-700 min-[390px]:block">
+            <Link href="/admin" className="hidden text-xs font-semibold text-amber-600 transition-colors hover:text-amber-700 sm:block">
               관리자
             </Link>
           )}
           {user && (
-            <Link href="/profile" className="hidden text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:hover:text-gray-100 min-[390px]:block">
+            <Link href="/profile" className="hidden text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:hover:text-gray-100 sm:block">
               프로필
             </Link>
           )}
-          <Link href="/cheer" className="hidden text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:hover:text-gray-100 min-[390px]:block">
+          <Link href="/cheer" className="hidden text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:hover:text-gray-100 min-[480px]:block">
             응원
           </Link>
           {user && (
-            <Link href="/request" className="hidden text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:hover:text-gray-100 min-[460px]:block">
+            <Link href="/request" className="hidden text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:hover:text-gray-100 sm:block">
               신청
             </Link>
           )}

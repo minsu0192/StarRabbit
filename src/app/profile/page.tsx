@@ -31,7 +31,7 @@ export default async function ProfilePage() {
 
   const { data: profileWithPoints, error: profileError } = await supabase
     .from('profiles')
-    .select('nickname, total_recommends, points, last_attendance_at')
+    .select('nickname, total_recommends, points, earned_points, last_attendance_at')
     .eq('id', user.id)
     .single();
   const { data: profileFallback } = profileError
@@ -62,10 +62,12 @@ export default async function ProfilePage() {
 
   const nickname = profile?.nickname ?? '유저';
   const totalRecommends = profile?.total_recommends ?? 0;
-  const rawPoints = profile && 'points' in profile ? profile.points : null;
-  const points = Number(rawPoints ?? totalRecommends);
+  const rawEarned = profile && 'earned_points' in profile ? profile.earned_points : null;
+  const rawBalance = profile && 'points' in profile ? profile.points : null;
+  const points = Number(rawBalance ?? 0);
+  const earnedPoints = Number(rawEarned ?? rawBalance ?? totalRecommends);
   const rank = getRank(totalRecommends);
-  const pointLevel = getPointLevel(points);
+  const pointLevel = getPointLevel(earnedPoints);
   const pointLevelIndex = POINT_LEVELS.findIndex((level) => level.label === pointLevel.label);
 
   const lastAttendance = profile && 'last_attendance_at' in profile
@@ -111,7 +113,8 @@ export default async function ProfilePage() {
           </div>
           <div className="text-right">
             <p className="text-2xl font-black tabular-nums">{points.toLocaleString()}</p>
-            <p className="text-xs text-gray-400">스타 ★</p>
+            <p className="text-xs text-gray-400">보유 스타 ★</p>
+            <p className="text-xs text-gray-300 dark:text-gray-700">누적 {earnedPoints.toLocaleString()} ★</p>
           </div>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-900">

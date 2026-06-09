@@ -63,7 +63,7 @@ export default async function RankingPage({ searchParams }: Props) {
     getWebtoons(popularSort(tab), undefined, undefined, 1, 20),
     supabase
       .from('reviews')
-      .select('id, webtoon_id, score, comment, recommend_count, created_at, profiles(nickname, total_recommends, points), webtoons(title)')
+      .select('id, webtoon_id, score, comment, recommend_count, created_at, profiles(nickname, total_recommends, earned_points), webtoons(title)')
       .gt('recommend_count', 0)
       .not('comment', 'is', null)
       .neq('comment', '')
@@ -155,8 +155,8 @@ export default async function RankingPage({ searchParams }: Props) {
             <ul className="grid gap-3">
               {topReviews.map((review, i) => {
                 const webtoon = review.webtoons as { title?: string } | null;
-                const profile = review.profiles as { nickname?: string; total_recommends?: number; points?: number } | null;
-                const tier = getPointLevel(profile?.points ?? profile?.total_recommends ?? 0);
+                const profile = review.profiles as { nickname?: string; total_recommends?: number; earned_points?: number } | null;
+                const tier = getPointLevel(profile?.earned_points ?? profile?.total_recommends ?? 0);
                 return (
                   <li key={review.id}>
                     <Link href={`/webtoon/${review.webtoon_id}`} className="block rounded-xl border border-gray-100 bg-white p-3 hover:border-amber-200 dark:border-gray-900 dark:bg-gray-950 dark:hover:border-amber-900">
