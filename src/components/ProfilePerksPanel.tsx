@@ -14,7 +14,6 @@ const SHOP_ITEMS = [
   { name: '닉네임 컬러 7일', price: 300, desc: '프로필과 한줄평 닉네임에 포인트 컬러 적용' },
   { name: '프로필 배지 30일', price: 700, desc: '등급 옆에 작은 배지 표시' },
   { name: '한줄평 강조권', price: 1200, desc: '내 한줄평 배경을 은은하게 강조' },
-  { name: '테마 영구 해금', price: 2000, desc: '특수 테마를 계정에 저장' },
 ];
 
 export default function ProfilePerksPanel({ points }: { points: number }) {
