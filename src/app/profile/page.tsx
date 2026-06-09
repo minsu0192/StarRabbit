@@ -211,7 +211,7 @@ export default async function ProfilePage() {
         </div>
       </section>
 
-      <ProfilePerksPanel points={points} />
+      <ProfilePerksPanel />
 
       {/* 내 아이템 */}
       {allOwnedItems && (

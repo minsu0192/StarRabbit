@@ -10,13 +10,7 @@ const THEMES: { id: AppTheme; label: string; desc: string }[] = [
   { id: 'moon', label: '달밤', desc: '달토끼 분위기의 차분한 밤 화면' },
 ];
 
-const SHOP_ITEMS = [
-  { name: '닉네임 컬러 7일', price: 300, desc: '프로필과 한줄평 닉네임에 포인트 컬러 적용' },
-  { name: '프로필 배지 30일', price: 700, desc: '등급 옆에 작은 배지 표시' },
-  { name: '한줄평 강조권', price: 1200, desc: '내 한줄평 배경을 은은하게 강조' },
-];
-
-export default function ProfilePerksPanel({ points }: { points: number }) {
+export default function ProfilePerksPanel() {
   const [theme, setTheme] = useState<AppTheme>('default');
 
   useEffect(() => {
@@ -51,31 +45,6 @@ export default function ProfilePerksPanel({ points }: { points: number }) {
         </div>
       </section>
 
-      <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold">스타 상점 구상</h2>
-            <p className="mt-0.5 text-xs text-gray-400">현재 보유 {points.toLocaleString()} ★ 기준</p>
-          </div>
-          <span className="rounded-full bg-gray-100 px-2 py-1 text-[10px] font-black text-gray-500 dark:bg-gray-900">기획중</span>
-        </div>
-        <div className="grid gap-2">
-          {SHOP_ITEMS.map((item) => (
-            <div key={item.name} className="grid grid-cols-[1fr_auto] gap-3 rounded-md border border-gray-100 px-3 py-2.5 dark:border-gray-900">
-              <div className="min-w-0">
-                <p className="text-sm font-bold">{item.name}</p>
-                <p className="mt-0.5 text-xs text-gray-400">{item.desc}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-black tabular-nums text-amber-500">{item.price.toLocaleString()} ★</p>
-                <p className={`text-[10px] font-bold ${points >= item.price ? 'text-green-500' : 'text-gray-300 dark:text-gray-700'}`}>
-                  {points >= item.price ? '가능' : '부족'}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
     </>
   );
 }

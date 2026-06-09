@@ -1,5 +1,6 @@
 'use server';
 
+import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 
@@ -14,12 +15,16 @@ export async function purchaseItem(formData: FormData) {
   if (!itemId) return;
 
   const { supabase, user } = await requireUser();
-  if (!user) return;
+  if (!user) redirect('/shop');
 
-  await supabase.rpc('spend_points', { p_user_id: user.id, p_item_id: itemId });
+  const { data: result } = await supabase.rpc('spend_points', { p_user_id: user.id, p_item_id: itemId });
 
   revalidatePath('/shop');
   revalidatePath('/profile');
+
+  if (result === 'ok') {
+    redirect('/shop');
+  }
 }
 
 export async function equipItem(formData: FormData) {
