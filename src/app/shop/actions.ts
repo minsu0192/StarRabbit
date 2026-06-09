@@ -9,6 +9,15 @@ async function requireUser() {
   return { supabase, user };
 }
 
+function getReturnPath(formData: FormData) {
+  return formData.get('returnTo') === '/profile' ? '/profile' : '/shop';
+}
+
+function redirectWithError(path: string, error: string): never {
+  const separator = path.includes('?') ? '&' : '?';
+  redirect(`${path}${separator}err=${encodeURIComponent(error)}`);
+}
+
 export async function purchaseItem(formData: FormData) {
   const itemId = String(formData.get('itemId') ?? '');
   if (!itemId) return;
@@ -25,53 +34,37 @@ export async function purchaseItem(formData: FormData) {
 }
 
 export async function equipItem(formData: FormData) {
-  const itemId  = String(formData.get('itemId')   ?? '');
-  const returnTo = String(formData.get('returnTo') ?? '/shop');
+  const itemId = String(formData.get('itemId') ?? '');
+  const returnTo = getReturnPath(formData);
   if (!itemId) return;
 
   const { supabase, user } = await requireUser();
-  if (!user) return;
+  if (!user) redirectWithError(returnTo, 'login');
 
-  const { data: item } = await supabase
-    .from('shop_items').select('type').eq('id', itemId).single();
-  if (!item) return;
-
-  const { data: owned } = await supabase
-    .from('user_items').select('item_id').eq('user_id', user.id);
-  const ownedIds = (owned ?? []).map((o) => o.item_id);
-
-  if (ownedIds.length > 0) {
-    const { data: sameType } = await supabase
-      .from('shop_items').select('id').eq('type', item.type).in('id', ownedIds);
-    const sameTypeIds = (sameType ?? []).map((s) => s.id);
-    if (sameTypeIds.length > 0) {
-      await supabase.from('user_items')
-        .update({ is_equipped: false })
-        .eq('user_id', user.id)
-        .in('item_id', sameTypeIds);
-    }
-  }
-
-  await supabase.from('user_items')
-    .update({ is_equipped: true })
-    .eq('user_id', user.id)
-    .eq('item_id', itemId);
+  const { data: result, error } = await supabase.rpc('equip_shop_item', {
+    p_user_id: user.id,
+    p_item_id: itemId,
+  });
+  if (error) redirectWithError(returnTo, 'db');
+  if (result !== 'ok') redirectWithError(returnTo, result ?? 'unknown');
 
   redirect(returnTo);
 }
 
 export async function unequipItem(formData: FormData) {
-  const itemId   = String(formData.get('itemId')   ?? '');
-  const returnTo = String(formData.get('returnTo') ?? '/shop');
+  const itemId = String(formData.get('itemId') ?? '');
+  const returnTo = getReturnPath(formData);
   if (!itemId) return;
 
   const { supabase, user } = await requireUser();
-  if (!user) return;
+  if (!user) redirectWithError(returnTo, 'login');
 
-  await supabase.from('user_items')
-    .update({ is_equipped: false })
-    .eq('user_id', user.id)
-    .eq('item_id', itemId);
+  const { data: result, error } = await supabase.rpc('unequip_shop_item', {
+    p_user_id: user.id,
+    p_item_id: itemId,
+  });
+  if (error) redirectWithError(returnTo, 'db');
+  if (result !== 'ok') redirectWithError(returnTo, result ?? 'unknown');
 
   redirect(returnTo);
 }
@@ -81,9 +74,10 @@ export async function equipTitle(formData: FormData) {
   if (!titleId) return;
 
   const { supabase, user } = await requireUser();
-  if (!user) return;
+  if (!user) redirect('/');
 
-  await supabase.rpc('equip_title', { p_user_id: user.id, p_title_id: titleId });
+  const { data: result, error } = await supabase.rpc('equip_title', { p_user_id: user.id, p_title_id: titleId });
+  if (error || result !== 'ok') redirect('/profile?err=title');
 
   redirect('/profile');
 }
@@ -93,12 +87,13 @@ export async function unequipTitle(formData: FormData) {
   if (!titleId) return;
 
   const { supabase, user } = await requireUser();
-  if (!user) return;
+  if (!user) redirect('/');
 
-  await supabase.from('user_titles')
-    .update({ is_equipped: false })
-    .eq('user_id', user.id)
-    .eq('title_id', titleId);
+  const { data: result, error } = await supabase.rpc('unequip_title', {
+    p_user_id: user.id,
+    p_title_id: titleId,
+  });
+  if (error || result !== 'ok') redirect('/profile?err=title');
 
   redirect('/profile');
 }

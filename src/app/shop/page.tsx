@@ -36,6 +36,7 @@ const ERR_MSG: Record<string, string> = {
   db:           'DB 오류가 발생했어요.',
   login:        '로그인이 필요해요.',
   unknown:      '알 수 없는 오류가 발생했어요.',
+  not_owned:    '보유하지 않은 아이템이에요.',
 };
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string; msg?: string }> }) {
@@ -86,7 +87,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
             <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">스타로 코스튬과 효과를 구매하세요</p>
           </div>
           <div className="shrink-0 flex flex-col items-center gap-1">
-            <TierBunny tier={tier.label} size={60} costume={equippedCostume?.costume_key} />
+            <TierBunny tier={tier.label} size={82} costume={equippedCostume?.costume_key} />
             {user ? (
               <p className="text-xs font-black tabular-nums text-amber-500">{balance.toLocaleString()} ★ 보유</p>
             ) : (
@@ -126,7 +127,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
                       : 'border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950'
                   }`}
                 >
-                  <TierBunny tier={tier.label} size={68} costume={item.costume_key} />
+                  <TierBunny tier={tier.label} size={100} costume={item.costume_key} />
                   <p className="text-xs font-black text-center">{item.name}</p>
                   <p className="text-[10px] text-gray-400 text-center leading-snug">{item.description}</p>
                   {!owned && (

@@ -82,7 +82,6 @@ export default async function ProfilePage() {
 
   const reviews = reviewsResult.data;
   const ownedItems = (ownedItemsResult.data ?? []) as unknown as OwnedRow[];
-  const userTitles = (userTitlesResult.data ?? []) as unknown as UserTitleRow[];
 
   // 업적 조건 체크 및 자동 칭호 부여
   const reviewCount = reviews?.length ?? 0;
@@ -121,9 +120,6 @@ export default async function ProfilePage() {
     && (!i.expires_at || i.expires_at > now)
   );
 
-  const earnedTitleKeys = new Set(earnedTitles.map((t) => t.title_id));
-  void earnedTitleKeys;
-
   const nickname = profile?.nickname ?? '유저';
   const totalRecommends = profile?.total_recommends ?? 0;
   const rawEarned = profile && 'earned_points' in profile ? profile.earned_points : null;
@@ -152,7 +148,7 @@ export default async function ProfilePage() {
       <section className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center gap-4">
           <div className="shrink-0">
-            <TierBunny tier={pointLevel.label} size={56} costume={equippedCostume} />
+            <TierBunny tier={pointLevel.label} size={82} costume={equippedCostume} />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -229,7 +225,7 @@ export default async function ProfilePage() {
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                   {ownedCostumes.map((item) => (
                     <div key={item.item_id} className={`flex flex-col items-center gap-1.5 rounded-xl border p-2 ${item.is_equipped ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/20' : 'border-gray-100 dark:border-gray-800'}`}>
-                      <TierBunny tier={pointLevel.label} size={56} costume={item.shop_items?.costume_key} />
+                      <TierBunny tier={pointLevel.label} size={76} costume={item.shop_items?.costume_key} />
                       <p className="text-[10px] font-bold text-center leading-tight">{item.shop_items?.name}</p>
                       {item.is_equipped ? (
                         <form action={unequipItem}>
