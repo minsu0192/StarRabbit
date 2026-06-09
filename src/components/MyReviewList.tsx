@@ -19,7 +19,10 @@ interface Props {
 const PAGE_SIZE = 10;
 
 export default function MyReviewList({ reviews }: Props) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return sessionStorage.getItem('profile-review-query') ?? '';
+  });
   const [page, setPage] = useState(1);
 
   const filtered = reviews.filter((r) => {
@@ -38,6 +41,7 @@ export default function MyReviewList({ reviews }: Props) {
   function handleQuery(v: string) {
     setQuery(v);
     setPage(1);
+    sessionStorage.setItem('profile-review-query', v);
   }
 
   return (

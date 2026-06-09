@@ -13,6 +13,7 @@ import LevelUpPopup from '@/components/LevelUpPopup';
 import { POINT_LEVELS, POINT_RULES, getPointLevel } from '@/lib/points';
 import PointHistoryModal from '@/components/PointHistoryModal';
 import ProfilePerksPanel from '@/components/ProfilePerksPanel';
+import { equipItem, unequipItem } from '@/app/shop/actions';
 
 function getRank(total: number): { label: string; color: string; next: string; needed: number | null } {
   if (total >= 1000) return { label: '별토끼', color: 'text-amber-500', next: '무지개토끼', needed: null };
@@ -21,13 +22,18 @@ function getRank(total: number): { label: string; color: string; next: string; n
   return                     { label: '길토끼',  color: 'text-gray-400',  next: '들토끼',    needed: 10 - total };
 }
 
+type OwnedRow = {
+  item_id: string;
+  is_equipped: boolean;
+  shop_items: { name: string; type: string; costume_key: string | null; description: string } | null;
+};
+
 export default async function ProfilePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) redirect('/');
 
-  // 출석 체크를 포인트 조회보다 먼저 실행 (race condition 방지)
   await supabase.rpc('auto_attend', { p_user_id: user.id });
 
   const { data: profileWithPoints, error: profileError } = await supabase
@@ -36,40 +42,30 @@ export default async function ProfilePage() {
     .eq('id', user.id)
     .single();
   const { data: profileFallback } = profileError
-    ? await supabase
-      .from('profiles')
-      .select('nickname, total_recommends')
-      .eq('id', user.id)
-      .single()
+    ? await supabase.from('profiles').select('nickname, total_recommends').eq('id', user.id).single()
     : { data: null };
   const profile = profileWithPoints ?? profileFallback;
 
-  const [reviewsResult, pointHistoryResult, equippedItemsResult] = await Promise.all([
+  const [reviewsResult, ownedItemsResult] = await Promise.all([
     supabase
       .from('reviews')
       .select('*, webtoons(title, platform)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false }),
     supabase
-      .from('point_transactions')
-      .select('id, amount, reason, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(30),
-    supabase
       .from('user_items')
-      .select('item_id, is_equipped, shop_items(name, type, costume_key)')
-      .eq('user_id', user.id)
-      .eq('is_equipped', true),
+      .select('item_id, is_equipped, shop_items(name, type, costume_key, description)')
+      .eq('user_id', user.id),
   ]);
 
   const reviews = reviewsResult.data;
-  const pointHistory = pointHistoryResult.data ?? [];
+  const ownedItems = (ownedItemsResult.data ?? []) as unknown as OwnedRow[];
 
-  type EquippedRow = { item_id: string; is_equipped: boolean; shop_items: { name: string; type: string; costume_key: string | null } | null };
-  const equippedItems = (equippedItemsResult.data ?? []) as unknown as EquippedRow[];
-  const equippedCostume = equippedItems.find((i) => i.shop_items?.type === 'costume')?.shop_items?.costume_key ?? null;
-  const equippedTitle = equippedItems.find((i) => i.shop_items?.type === 'title')?.shop_items?.name ?? null;
+  const equippedCostume = ownedItems.find((i) => i.is_equipped && i.shop_items?.type === 'costume')?.shop_items?.costume_key ?? null;
+  const equippedTitle   = ownedItems.find((i) => i.is_equipped && i.shop_items?.type === 'title')?.shop_items?.name ?? null;
+
+  const ownedCostumes = ownedItems.filter((i) => i.shop_items?.type === 'costume');
+  const ownedTitles   = ownedItems.filter((i) => i.shop_items?.type === 'title');
 
   const nickname = profile?.nickname ?? '유저';
   const totalRecommends = profile?.total_recommends ?? 0;
@@ -93,7 +89,7 @@ export default async function ProfilePage() {
       <Header />
 
       {/* 프로필 헤더 */}
-      <section className="px-4 py-6 border-b border-gray-100 dark:border-gray-800">
+      <section className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center gap-4">
           <div className="shrink-0">
             <TierBunny tier={pointLevel.label} size={56} costume={equippedCostume} />
@@ -129,7 +125,7 @@ export default async function ProfilePage() {
           </div>
           <div className="text-right">
             <p className="text-2xl font-black tabular-nums">{points.toLocaleString()}</p>
-            <p className="text-xs text-gray-400">보유 스타 ★</p>
+            <p className="text-xs text-gray-400">보유 ★</p>
             <p className="text-xs text-gray-300 dark:text-gray-700">누적 {earnedPoints.toLocaleString()} ★</p>
           </div>
         </div>
@@ -143,9 +139,7 @@ export default async function ProfilePage() {
               : `${pointLevel.nextLabel}까지 ${pointLevel.remaining.toLocaleString()} 스타 남음`}
           </p>
           <div className="flex items-center gap-3">
-            <Link href="/shop" className="text-xs font-bold text-amber-600 hover:text-amber-700 dark:text-amber-400">
-              상점 →
-            </Link>
+            <Link href="/shop" className="text-xs font-bold text-amber-600 hover:text-amber-700 dark:text-amber-400">상점 →</Link>
             <PointHistoryModal />
           </div>
         </div>
@@ -155,94 +149,151 @@ export default async function ProfilePage() {
             : 'border-amber-100 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20'
         }`}>
           {checkedToday ? (
-            <>
-              <span className="text-lg">✓</span>
-              <span className="text-xs font-bold text-green-600 dark:text-green-400">오늘 출석 완료! +50 스타 획득</span>
-            </>
+            <><span className="text-base">✓</span><span className="text-xs font-bold text-green-600 dark:text-green-400">오늘 출석 완료! +50 스타 획득</span></>
           ) : (
-            <>
-              <span className="text-lg">☀️</span>
-              <span className="text-xs text-amber-700 dark:text-amber-400">오늘 사이트를 방문하면 +50 스타가 자동으로 지급돼요</span>
-            </>
+            <><span className="text-base">☀️</span><span className="text-xs text-amber-700 dark:text-amber-400">오늘 방문하면 +50 스타가 자동 지급돼요</span></>
           )}
         </div>
       </section>
 
       <ProfilePerksPanel points={points} />
 
-      {/* 스타 히스토리 */}
-      {pointHistory.length > 0 && (
-        <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
-          <h2 className="text-sm font-bold mb-3">스타 획득 내역</h2>
-          <ul className="divide-y divide-gray-100 dark:divide-gray-900 rounded-md border border-gray-100 dark:border-gray-900 overflow-hidden">
-            {pointHistory.map((tx) => (
-              <li key={tx.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{tx.reason}</p>
-                  <p className="text-[11px] text-gray-400">{(tx.created_at as string).slice(0, 10).replace(/-/g, '.')}</p>
+      {/* 내 아이템 */}
+      {(ownedCostumes.length > 0 || ownedTitles.length > 0) && (
+        <details className="border-b border-gray-100 dark:border-gray-800 group" open>
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-4">
+            <span className="text-sm font-bold">내 아이템 ({ownedItems.length})</span>
+            <span className="text-xs text-gray-400 group-open:rotate-180 transition-transform">▾</span>
+          </summary>
+          <div className="px-4 pb-4 space-y-4">
+            {ownedCostumes.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-gray-400 mb-2">코스튬</p>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {ownedCostumes.map((item) => (
+                    <div key={item.item_id} className={`flex flex-col items-center gap-1.5 rounded-xl border p-2 ${item.is_equipped ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/20' : 'border-gray-100 dark:border-gray-800'}`}>
+                      <TierBunny tier={pointLevel.label} size={56} costume={item.shop_items?.costume_key} />
+                      <p className="text-[10px] font-bold text-center leading-tight">{item.shop_items?.name}</p>
+                      {item.is_equipped ? (
+                        <form action={unequipItem}>
+                          <input type="hidden" name="itemId" value={item.item_id} />
+                          <button className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800">
+                            장착중 ✓
+                          </button>
+                        </form>
+                      ) : (
+                        <form action={equipItem}>
+                          <input type="hidden" name="itemId" value={item.item_id} />
+                          <button className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600 dark:border-gray-700">
+                            장착
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                <span className={`text-sm font-black tabular-nums shrink-0 ${tx.amount > 0 ? 'text-amber-500' : 'text-red-400'}`}>
-                  {tx.amount > 0 ? '+' : ''}{tx.amount} ★
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+              </div>
+            )}
+            {ownedTitles.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-gray-400 mb-2">칭호</p>
+                <div className="flex flex-col gap-1.5">
+                  {ownedTitles.map((item) => (
+                    <div key={item.item_id} className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${item.is_equipped ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/20' : 'border-gray-100 dark:border-gray-800'}`}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xs font-black px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800">{item.shop_items?.name}</span>
+                        <span className="text-[10px] text-gray-400 truncate">{item.shop_items?.description}</span>
+                      </div>
+                      {item.is_equipped ? (
+                        <form action={unequipItem}>
+                          <input type="hidden" name="itemId" value={item.item_id} />
+                          <button className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-600 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800">
+                            장착중 ✓
+                          </button>
+                        </form>
+                      ) : (
+                        <form action={equipItem}>
+                          <input type="hidden" name="itemId" value={item.item_id} />
+                          <button className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full border border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600 dark:border-gray-700">
+                            장착
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </details>
       )}
 
-      <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
-        <h2 className="text-sm font-bold mb-3">스타 획득 방법</h2>
-        <div className="divide-y divide-gray-100 rounded-md border border-gray-100 dark:divide-gray-900 dark:border-gray-900">
-          {POINT_RULES.map((rule) => (
-            <div key={rule.label} className="grid grid-cols-[1fr_auto] gap-3 px-3 py-3">
-              <div className="min-w-0">
-                <p className="text-sm font-bold">{rule.label}</p>
-                <p className="mt-0.5 text-xs text-gray-400">{rule.description}</p>
+      {/* 스타 획득 방법 */}
+      <details className="border-b border-gray-100 dark:border-gray-800 group">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-4">
+          <span className="text-sm font-bold">스타 획득 방법</span>
+          <span className="text-xs text-gray-400 group-open:rotate-180 transition-transform">▾</span>
+        </summary>
+        <div className="px-4 pb-4">
+          <div className="divide-y divide-gray-100 rounded-md border border-gray-100 dark:divide-gray-900 dark:border-gray-900">
+            {POINT_RULES.map((rule) => (
+              <div key={rule.label} className="grid grid-cols-[1fr_auto] gap-3 px-3 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold">{rule.label}</p>
+                  <p className="mt-0.5 text-xs text-gray-400">{rule.description}</p>
+                </div>
+                <span className="text-sm font-black tabular-nums text-amber-500">+{rule.points}</span>
               </div>
-              <span className="text-sm font-black tabular-nums text-amber-500">+{rule.points}</span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </section>
+      </details>
 
-      <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
-        <h2 className="text-sm font-bold mb-3">토끼 등급</h2>
-        <div className="grid gap-2">
-          {POINT_LEVELS.map((level) => (
-            <div key={level.label} className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${pointLevel.label === level.label ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30' : 'border-gray-100 dark:border-gray-900'}`}>
-              <TierBunny tier={level.label} size={32} />
-              <span className={`flex-1 text-sm font-bold ${level.color}`}>{level.label}</span>
-              {pointLevel.label === level.label && (
-                <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black text-white">현재</span>
-              )}
-              <span className="text-xs font-semibold text-gray-400">{level.min.toLocaleString()} 스타</span>
-            </div>
-          ))}
+      {/* 토끼 등급 */}
+      <details className="border-b border-gray-100 dark:border-gray-800 group">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-4">
+          <span className="text-sm font-bold">토끼 등급표</span>
+          <span className="text-xs text-gray-400 group-open:rotate-180 transition-transform">▾</span>
+        </summary>
+        <div className="px-4 pb-4">
+          <div className="grid gap-2">
+            {POINT_LEVELS.map((level) => (
+              <div key={level.label} className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${pointLevel.label === level.label ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30' : 'border-gray-100 dark:border-gray-900'}`}>
+                <TierBunny tier={level.label} size={32} />
+                <span className={`flex-1 text-sm font-bold ${level.color}`}>{level.label}</span>
+                {pointLevel.label === level.label && (
+                  <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black text-white">현재</span>
+                )}
+                <span className="text-xs font-semibold text-gray-400">{level.min.toLocaleString()} 스타</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </section>
+      </details>
 
       {/* 닉네임 변경 */}
-      <section className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
-        <h2 className="text-sm font-bold mb-3">닉네임 변경</h2>
-        <NicknameForm currentNickname={nickname} />
-      </section>
+      <details className="border-b border-gray-100 dark:border-gray-800 group">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-4">
+          <span className="text-sm font-bold">닉네임 변경</span>
+          <span className="text-xs text-gray-400 group-open:rotate-180 transition-transform">▾</span>
+        </summary>
+        <div className="px-4 pb-4">
+          <NicknameForm currentNickname={nickname} />
+        </div>
+      </details>
 
-      {/* 내 한줄평 목록 */}
+      {/* 내 한줄평 */}
       <section className="flex-1 px-0">
-        <div className="px-4 py-3">
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
           <h2 className="text-sm font-bold">내 한줄평 {reviews && reviews.length > 0 ? `(${reviews.length})` : ''}</h2>
         </div>
-
         {!reviews || reviews.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400">
             <BunnyMascot size={44} />
             <p className="text-sm">아직 남긴 한줄평이 없어요</p>
           </div>
         ) : (
-          <MyReviewList reviews={reviews.map((r) => ({
-            ...r,
-            webtoons: (r.webtoons as { title: string } | null),
-          }))} />
+          <MyReviewList reviews={reviews.map((r) => ({ ...r, webtoons: (r.webtoons as { title: string } | null) }))} />
         )}
       </section>
 
