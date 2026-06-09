@@ -25,13 +25,13 @@ export async function purchaseItem(formData: FormData) {
 }
 
 export async function equipItem(formData: FormData) {
-  const itemId = String(formData.get('itemId') ?? '');
+  const itemId  = String(formData.get('itemId')   ?? '');
+  const returnTo = String(formData.get('returnTo') ?? '/shop');
   if (!itemId) return;
 
   const { supabase, user } = await requireUser();
   if (!user) return;
 
-  // 같은 타입의 다른 아이템 모두 해제
   const { data: item } = await supabase
     .from('shop_items').select('type').eq('id', itemId).single();
   if (!item) return;
@@ -57,11 +57,12 @@ export async function equipItem(formData: FormData) {
     .eq('user_id', user.id)
     .eq('item_id', itemId);
 
-  redirect('/shop');
+  redirect(returnTo);
 }
 
 export async function unequipItem(formData: FormData) {
-  const itemId = String(formData.get('itemId') ?? '');
+  const itemId   = String(formData.get('itemId')   ?? '');
+  const returnTo = String(formData.get('returnTo') ?? '/shop');
   if (!itemId) return;
 
   const { supabase, user } = await requireUser();
@@ -72,7 +73,7 @@ export async function unequipItem(formData: FormData) {
     .eq('user_id', user.id)
     .eq('item_id', itemId);
 
-  redirect('/shop');
+  redirect(returnTo);
 }
 
 export async function equipTitle(formData: FormData) {

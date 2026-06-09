@@ -234,6 +234,7 @@ export default async function ProfilePage() {
                       {item.is_equipped ? (
                         <form action={unequipItem}>
                           <input type="hidden" name="itemId" value={item.item_id} />
+                          <input type="hidden" name="returnTo" value="/profile" />
                           <button className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800">
                             장착중 ✓
                           </button>
@@ -241,6 +242,7 @@ export default async function ProfilePage() {
                       ) : (
                         <form action={equipItem}>
                           <input type="hidden" name="itemId" value={item.item_id} />
+                          <input type="hidden" name="returnTo" value="/profile" />
                           <button className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600 dark:border-gray-700">
                             장착
                           </button>
