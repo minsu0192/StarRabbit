@@ -702,7 +702,7 @@ export async function getReviewsByWebtoon(webtoonId: string): Promise<ReviewWith
   const apiKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
   const res = await fetch(
-    `${supabaseUrl}/rest/v1/reviews?select=*,profiles(nickname,total_recommends,earned_points)&webtoon_id=eq.${webtoonId}&order=recommend_count.desc`,
+    `${supabaseUrl}/rest/v1/reviews?select=*,profiles(nickname,total_recommends,earned_points,nickname_color_expires_at,review_badge_expires_at,review_highlight_expires_at)&webtoon_id=eq.${webtoonId}&order=recommend_count.desc`,
     {
       headers: { apikey: apiKey, Authorization: `Bearer ${apiKey}` },
       cache: 'no-store',

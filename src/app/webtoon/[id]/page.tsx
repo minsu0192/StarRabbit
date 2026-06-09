@@ -297,14 +297,26 @@ function ReviewItem({
 }) {
   const earnedPoints = review.profiles?.earned_points ?? review.profiles?.points ?? review.profiles?.total_recommends ?? 0;
   const tier = getPointLevel(earnedPoints);
+  const now = new Date().toISOString();
+  const hasNicknameColor = !!(review.profiles?.nickname_color_expires_at && review.profiles.nickname_color_expires_at > now);
+  const hasBadge = !!(review.profiles?.review_badge_expires_at && review.profiles.review_badge_expires_at > now);
+  const hasHighlight = !!(review.profiles?.review_highlight_expires_at && review.profiles.review_highlight_expires_at > now);
 
   return (
-    <li className={isBest ? 'rounded-lg border border-amber-200 bg-white px-3 py-3 shadow-sm dark:border-amber-900/60 dark:bg-gray-950' : 'rounded-lg border border-gray-100 bg-white px-3 py-3 shadow-sm dark:border-gray-900 dark:bg-gray-950'}>
+    <li className={[
+      'rounded-lg border px-3 py-3 shadow-sm',
+      isBest
+        ? 'border-amber-200 bg-white dark:border-amber-900/60 dark:bg-gray-950'
+        : hasHighlight
+          ? 'border-amber-100 bg-amber-50/60 dark:border-amber-900/40 dark:bg-amber-950/10'
+          : 'border-gray-100 bg-white dark:border-gray-900 dark:bg-gray-950',
+    ].join(' ')}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1 flex-wrap">
             <TierBunny tier={tier.label} size={22} />
-            <span className="text-sm font-semibold">{review.profiles?.nickname ?? '익명'}</span>
+            <span className={`text-sm font-semibold ${hasNicknameColor ? 'text-amber-500 dark:text-amber-400' : ''}`}>{review.profiles?.nickname ?? '익명'}</span>
+            {hasBadge && <span className="text-[10px] text-amber-400">✦</span>}
             <span className={`text-[10px] font-medium ${tier.color}`}>{tier.label}</span>
             {isBest && (
               <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-700 dark:bg-amber-950 dark:text-amber-300">BEST</span>

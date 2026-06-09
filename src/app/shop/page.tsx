@@ -14,15 +14,20 @@ type ShopItem = {
   type: string;
   price: number;
   costume_key: string | null;
+  duration_days: number | null;
 };
 
-type UserItem = { item_id: string; is_equipped: boolean };
+type UserItem = { item_id: string; is_equipped: boolean; expires_at: string | null };
 
-const TYPE_LABEL: Record<string, string> = {
-  costume: '코스튬',
-  title: '칭호',
-  frame: '테두리',
+const EFFECT_META: Record<string, { icon: string; label: string }> = {
+  nickname_color:   { icon: '🎨', label: '닉네임 컬러' },
+  review_badge:     { icon: '✦',  label: '프로필 배지' },
+  review_highlight: { icon: '✨', label: '한줄평 강조' },
 };
+
+function daysLeft(expiresAt: string): number {
+  return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86_400_000);
+}
 
 export default async function ShopPage() {
   const supabase = await createClient();
@@ -31,7 +36,7 @@ export default async function ShopPage() {
   const [shopRes, userItemsRes, profileRes] = await Promise.all([
     supabase.from('shop_items').select('*').eq('is_available', true).order('type').order('price'),
     user
-      ? supabase.from('user_items').select('item_id, is_equipped').eq('user_id', user.id)
+      ? supabase.from('user_items').select('item_id, is_equipped, expires_at').eq('user_id', user.id)
       : Promise.resolve({ data: [] as UserItem[] }),
     user
       ? supabase.from('profiles').select('points, earned_points').eq('id', user.id).single()
@@ -42,17 +47,21 @@ export default async function ShopPage() {
   const userItems = (userItemsRes.data ?? []) as UserItem[];
   const profile = profileRes.data as { points: number; earned_points: number } | null;
 
-  const ownedIds = new Set(userItems.map((u) => u.item_id));
+  const now = new Date().toISOString();
+  const activeIds = new Set(
+    userItems.filter((u) => !u.expires_at || u.expires_at > now).map((u) => u.item_id)
+  );
   const equippedIds = new Set(userItems.filter((u) => u.is_equipped).map((u) => u.item_id));
+  const expiryMap = new Map(userItems.filter((u) => u.expires_at).map((u) => [u.item_id, u.expires_at!]));
 
   const balance = profile?.points ?? 0;
   const earnedPoints = profile?.earned_points ?? 0;
   const tier = getPointLevel(earnedPoints);
 
   const equippedCostume = allItems.find((i) => equippedIds.has(i.id) && i.type === 'costume');
-  const equippedTitle = allItems.find((i) => equippedIds.has(i.id) && i.type === 'title');
 
-  const groups = ['costume', 'title'] as const;
+  const costumes = allItems.filter((i) => i.type === 'costume');
+  const effects  = allItems.filter((i) => ['nickname_color', 'review_badge', 'review_highlight'].includes(i.type));
 
   return (
     <div className="flex flex-col min-h-screen max-w-2xl mx-auto w-full">
@@ -64,7 +73,7 @@ export default async function ShopPage() {
           <div>
             <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mb-0.5">SHOP</p>
             <h1 className="text-xl font-black tracking-tight">별토끼 상점</h1>
-            <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">스타로 코스튬과 칭호를 구매하세요</p>
+            <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">스타로 코스튬과 효과를 구매하세요</p>
           </div>
           <div className="shrink-0 flex flex-col items-center gap-1">
             <TierBunny tier={tier.label} size={60} costume={equippedCostume?.costume_key} />
@@ -73,75 +82,94 @@ export default async function ShopPage() {
             ) : (
               <p className="text-[11px] text-gray-400">로그인 후 구매 가능</p>
             )}
-            {equippedTitle && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                {equippedTitle.name}
-              </span>
-            )}
           </div>
         </div>
       </section>
 
-      {/* 아이템 목록 */}
-      {groups.map((type) => {
-        const items = allItems.filter((i) => i.type === type);
-        if (items.length === 0) return null;
-        return (
-          <section key={type} className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
-            <h2 className="text-sm font-black mb-3">{TYPE_LABEL[type]}</h2>
+      {/* 코스튬 */}
+      {costumes.length > 0 && (
+        <section className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
+          <h2 className="text-sm font-black mb-3">코스튬</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {costumes.map((item) => {
+              const owned = activeIds.has(item.id);
+              const equipped = equippedIds.has(item.id);
+              const canAfford = balance >= item.price;
+              return (
+                <div
+                  key={item.id}
+                  className={`flex flex-col items-center gap-2 rounded-xl border p-3 ${
+                    equipped
+                      ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/20'
+                      : 'border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950'
+                  }`}
+                >
+                  <TierBunny tier={tier.label} size={68} costume={item.costume_key} />
+                  <p className="text-xs font-black text-center">{item.name}</p>
+                  <p className="text-[10px] text-gray-400 text-center leading-snug">{item.description}</p>
+                  {!owned && (
+                    <p className={`text-xs font-bold ${canAfford ? 'text-amber-500' : 'text-red-400'}`}>
+                      {item.price.toLocaleString()} ★
+                    </p>
+                  )}
+                  <CostumeButton item={item} owned={owned} equipped={equipped} canAfford={canAfford} user={!!user} />
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
-            {type === 'costume' ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {items.map((item) => {
-                  const owned = ownedIds.has(item.id);
-                  const equipped = equippedIds.has(item.id);
-                  const canAfford = balance >= item.price;
-                  return (
-                    <div key={item.id} className={`flex flex-col items-center gap-2 rounded-xl border p-3 ${equipped ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/20' : 'border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950'}`}>
-                      <TierBunny tier={tier.label} size={68} costume={item.costume_key} />
-                      <p className="text-xs font-black text-center">{item.name}</p>
-                      <p className="text-[10px] text-gray-400 text-center leading-snug">{item.description}</p>
-                      {!owned && (
-                        <p className={`text-xs font-bold ${canAfford ? 'text-amber-500' : 'text-red-400'}`}>
-                          {item.price.toLocaleString()} ★
-                        </p>
+      {/* 효과 아이템 */}
+      {effects.length > 0 && (
+        <section className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
+          <h2 className="text-sm font-black mb-3">효과</h2>
+          <div className="flex flex-col gap-2">
+            {effects.map((item) => {
+              const active = activeIds.has(item.id);
+              const expiry = expiryMap.get(item.id);
+              const canAfford = balance >= item.price;
+              const meta = EFFECT_META[item.type] ?? { icon: '◆', label: item.type };
+              return (
+                <div
+                  key={item.id}
+                  className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
+                    active
+                      ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/20'
+                      : 'border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950'
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <span className="text-sm">{meta.icon}</span>
+                      <span className="text-xs font-black">{item.name}</span>
+                      {item.duration_days && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800">
+                          {item.duration_days}일권
+                        </span>
                       )}
-                      <ItemButton item={item} owned={owned} equipped={equipped} canAfford={canAfford} user={!!user} />
+                      {active && expiry && (
+                        <span className="text-[10px] font-bold text-amber-500">
+                          {daysLeft(expiry)}일 남음
+                        </span>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {items.map((item) => {
-                  const owned = ownedIds.has(item.id);
-                  const equipped = equippedIds.has(item.id);
-                  const canAfford = balance >= item.price;
-                  return (
-                    <div key={item.id} className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${equipped ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/20' : 'border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950'}`}>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-xs font-black px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800">{item.name}</span>
-                          {equipped && <span className="text-[10px] text-amber-500 font-bold">장착중</span>}
-                        </div>
-                        <p className="text-[11px] text-gray-400 leading-snug">{item.description}</p>
-                        {!owned && (
-                          <p className={`text-xs font-bold mt-1 ${canAfford ? 'text-amber-500' : 'text-red-400'}`}>
-                            {item.price.toLocaleString()} ★
-                          </p>
-                        )}
-                      </div>
-                      <div className="shrink-0">
-                        <ItemButton item={item} owned={owned} equipped={equipped} canAfford={canAfford} user={!!user} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        );
-      })}
+                    <p className="text-[11px] text-gray-400 leading-snug">{item.description}</p>
+                    {!active && (
+                      <p className={`text-xs font-bold mt-1 ${canAfford ? 'text-amber-500' : 'text-red-400'}`}>
+                        {item.price.toLocaleString()} ★
+                      </p>
+                    )}
+                  </div>
+                  <div className="shrink-0">
+                    <EffectButton item={item} active={active} canAfford={canAfford} user={!!user} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* 스타 획득 안내 */}
       <section className="px-4 py-5">
@@ -162,7 +190,7 @@ export default async function ShopPage() {
   );
 }
 
-function ItemButton({
+function CostumeButton({
   item, owned, equipped, canAfford, user,
 }: {
   item: ShopItem;
@@ -171,9 +199,7 @@ function ItemButton({
   canAfford: boolean;
   user: boolean;
 }) {
-  if (!user) {
-    return <span className="text-[10px] text-gray-400">{item.price.toLocaleString()} ★</span>;
-  }
+  if (!user) return <span className="text-[10px] text-gray-400">{item.price.toLocaleString()} ★</span>;
   if (owned) {
     if (equipped) {
       return (
@@ -192,6 +218,39 @@ function ItemButton({
           장착하기
         </button>
       </form>
+    );
+  }
+  return (
+    <form action={purchaseItem}>
+      <input type="hidden" name="itemId" value={item.id} />
+      <button
+        disabled={!canAfford}
+        className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors ${
+          canAfford
+            ? 'border-amber-400 bg-amber-400 text-white hover:bg-amber-500'
+            : 'border-gray-100 text-gray-300 cursor-not-allowed dark:border-gray-800 dark:text-gray-700'
+        }`}
+      >
+        {canAfford ? `구매 ${item.price.toLocaleString()}★` : '잔고 부족'}
+      </button>
+    </form>
+  );
+}
+
+function EffectButton({
+  item, active, canAfford, user,
+}: {
+  item: ShopItem;
+  active: boolean;
+  canAfford: boolean;
+  user: boolean;
+}) {
+  if (!user) return <span className="text-[10px] text-gray-400">{item.price.toLocaleString()} ★</span>;
+  if (active) {
+    return (
+      <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800">
+        사용중 ✓
+      </span>
     );
   }
   return (

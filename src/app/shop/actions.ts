@@ -74,3 +74,30 @@ export async function unequipItem(formData: FormData) {
   revalidatePath('/shop');
   revalidatePath('/profile');
 }
+
+export async function equipTitle(formData: FormData) {
+  const titleId = String(formData.get('titleId') ?? '');
+  if (!titleId) return;
+
+  const { supabase, user } = await requireUser();
+  if (!user) return;
+
+  await supabase.rpc('equip_title', { p_user_id: user.id, p_title_id: titleId });
+
+  revalidatePath('/profile');
+}
+
+export async function unequipTitle(formData: FormData) {
+  const titleId = String(formData.get('titleId') ?? '');
+  if (!titleId) return;
+
+  const { supabase, user } = await requireUser();
+  if (!user) return;
+
+  await supabase.from('user_titles')
+    .update({ is_equipped: false })
+    .eq('user_id', user.id)
+    .eq('title_id', titleId);
+
+  revalidatePath('/profile');
+}
