@@ -14,6 +14,7 @@ import {
   createCheerEvent,
   deleteReviewAsAdmin,
   rejectWebtoonRequest,
+  resetGameAttempts,
   settleCheerEvent,
   suspendUserAsAdmin,
   updateTopNotice,
@@ -418,6 +419,16 @@ export default async function AdminPage({ searchParams }: AdminProps) {
               </form>
             ))}
           </div>
+        </section>
+
+        <section className="rounded-md border border-gray-100 p-3 dark:border-gray-900">
+          <h2 className="mb-1 text-sm font-bold">게임 판수 초기화</h2>
+          <p className="mb-3 text-xs text-gray-400">내 계정의 오늘 게임 도전 횟수(3판)를 초기화합니다. 테스트용.</p>
+          <form action={resetGameAttempts}>
+            <button className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+              내 판수 초기화
+            </button>
+          </form>
         </section>
 
         <section className="rounded-md border border-gray-100 p-3 dark:border-gray-900">

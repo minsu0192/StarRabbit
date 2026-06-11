@@ -329,3 +329,18 @@ export async function rejectWebtoonRequest(formData: FormData) {
   revalidatePath('/request');
   redirect('/admin?msg=' + encodeURIComponent('등록 신청을 반려했습니다'));
 }
+
+export async function resetGameAttempts() {
+  const adminUser = await requireAdmin();
+  const service = requireServiceRole();
+
+  const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+  const dateStr = today.toISOString().slice(0, 10);
+
+  await service.from('game_daily_stats')
+    .delete()
+    .eq('user_id', adminUser.id)
+    .eq('game_date', dateStr);
+
+  redirect('/admin?msg=' + encodeURIComponent('오늘 게임 판수 초기화 완료'));
+}
