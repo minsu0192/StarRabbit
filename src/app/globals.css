@@ -67,7 +67,9 @@ textarea {
   }
 
   .game-bunny,
-  .attack-effect {
+  .attack-effect,
+  .game-intro-star,
+  .game-intro-carrot {
     animation: none !important;
   }
 }
@@ -128,7 +130,7 @@ textarea {
 @keyframes rabbit-projectile {
   0% { opacity: 0; transform: translateX(0) scale(.6) rotate(0); }
   25% { opacity: 1; }
-  100% { opacity: 0; transform: translateX(-48px) scale(1.05) rotate(-220deg); }
+  100% { opacity: 0; transform: translateX(calc(-1 * var(--attack-distance, 48px))) scale(1.05) rotate(-220deg); }
 }
 
 @keyframes rabbit-slash {
@@ -140,7 +142,25 @@ textarea {
 @keyframes rabbit-beam {
   0% { opacity: 0; transform: translateX(-2px) scaleX(.1); }
   30% { opacity: 1; transform: translateX(-8px) scaleX(1); }
-  100% { opacity: 0; transform: translateX(-54px) scaleX(1.6); }
+  100% { opacity: 0; transform: translateX(calc(-1 * var(--attack-distance, 54px))) scaleX(1.6); }
+}
+
+.game-intro-star {
+  animation: game-intro-twinkle 1.8s ease-in-out infinite alternate;
+}
+
+.game-intro-carrot {
+  animation: game-intro-float 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes game-intro-twinkle {
+  from { opacity: .45; transform: scale(.8) rotate(-8deg); }
+  to { opacity: 1; transform: scale(1.15) rotate(8deg); }
+}
+
+@keyframes game-intro-float {
+  from { transform: translateY(3px) rotate(8deg); }
+  to { transform: translateY(-7px) rotate(-5deg); }
 }
 
 html[data-app-theme="excel"] body {

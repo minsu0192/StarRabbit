@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import TierBunny from '@/components/TierBunny';
-import { ENEMY_CONFIG, GAME_CONFIG, UNIT_CONFIG } from '@/lib/game/config';
+import { ENEMY_CONFIG, GAME_CONFIG, UNIT_CONFIG, rangeLabel } from '@/lib/game/config';
 import { advanceGame, applySpawnCommand, createInitialGameState, createSpawnCommand, startGame } from '@/lib/game/engine';
 import type { AttackStyle } from '@/lib/game/config';
 import type { EnemyKey, GameState, UnitKey } from '@/lib/game/types';
@@ -68,7 +68,7 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
       setBestStage(result.bestStage ?? state.clearedStages);
       setResultMessage(result.rewardStars
         ? `서버 검증 완료 · ${result.rewardStars}스타 지급`
-        : '서버 검증 완료 · 오늘 이미 받은 구간입니다');
+        : '서버 검증 완료 · 지급할 스타가 없습니다');
     });
   }, [runId, state.clearedStages, state.phase, state.totalElapsedMs]);
 
@@ -162,7 +162,7 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
             const config = UNIT_CONFIG[ally.key as UnitKey];
             const attacking = state.totalElapsedMs - ally.lastAttackAtMs < 300;
             return (
-              <div key={ally.id} className={`game-combatant absolute bottom-11 z-30 -translate-x-1/2 transition-[left] duration-100 ${attacking ? 'is-attacking' : ''}`} style={{ left: `${ally.x / 10}%`, ['--unit-color' as string]: config.color }}>
+              <div key={ally.id} className={`game-combatant absolute bottom-11 z-30 -translate-x-1/2 transition-[left] duration-100 ${attacking ? 'is-attacking' : ''}`} style={{ left: `${ally.x / 10}%`, ['--unit-color' as string]: config.color, ['--attack-distance' as string]: `${Math.max(30, Math.round(config.range / 2.8))}px` }}>
                 <div className="mx-auto mb-0.5 h-1 w-10 overflow-hidden rounded bg-black/20"><div className="h-full" style={{ width: `${Math.max(0, ally.hp / ally.maxHp * 100)}%`, backgroundColor: config.color }} /></div>
                 <div className="game-bunny origin-bottom"><TierBunny tier={config.tier} costume={config.costume} size={54} /></div>
                 {attacking && <span className={`attack-effect attack-${config.attackStyle}`} aria-hidden="true">{ATTACK_MARK[config.attackStyle]}</span>}
@@ -175,7 +175,7 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
             {Object.keys(enemyCounts).length === 0 ? '적 출현 대기' : Object.entries(enemyCounts).map(([key, count]) => `${ENEMY_CONFIG[key as EnemyKey].name} ${count}`).join(' · ')}
           </div>
 
-          {(state.phase === 'ready' || state.phase === 'won' || state.phase === 'lost') && <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#102116]/70 px-6 text-center text-white backdrop-blur-[3px]"><div className="rounded-full bg-white/10 p-2 ring-1 ring-white/20"><TierBunny tier={tierLabel} size={88} /></div><p className="mt-2 text-2xl font-black">{state.phase === 'ready' ? '수호 작전 준비' : state.phase === 'won' ? '20스테이지 방어 성공!' : '토끼굴 방어 실패'}</p><p className="mt-1 text-xs text-white/70">{state.phase === 'ready' ? `${unlockedUnits.length}종의 토끼 · 남은 도전 ${Math.max(0, 3 - attemptsUsed)}회` : resultMessage || `${state.clearedStages}스테이지 기록을 서버에서 검증 중...`}</p><button type="button" disabled={starting || (state.phase === 'ready' && attemptsUsed >= 3)} onClick={() => state.phase === 'ready' ? beginRun() : reset()} className="mt-4 rounded-full bg-amber-400 px-7 py-3 text-sm font-black text-gray-950 shadow-xl shadow-black/20 disabled:opacity-40">{state.phase === 'ready' ? starting ? '확인 중...' : attemptsUsed >= 3 ? '오늘 도전 완료' : '작전 시작' : '다시 도전'}</button></div>}
+          {(state.phase === 'ready' || state.phase === 'won' || state.phase === 'lost') && <div className="absolute inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#fff3ba]/95 via-[#dff7d8]/95 to-[#8bc982]/95 px-6 text-center text-[#273322] backdrop-blur-[3px] dark:from-[#26351d]/95 dark:via-[#173126]/95 dark:to-[#173c24]/95 dark:text-white"><span className="game-intro-star absolute left-8 top-8 text-2xl text-amber-400">★</span><span className="game-intro-star absolute right-10 top-14 text-lg text-amber-300">✦</span><span className="game-intro-carrot absolute right-6 top-28 text-2xl">🥕</span>{state.phase === 'ready' ? <div className="relative h-28 w-56"><div className="absolute bottom-0 left-4 -rotate-6"><TierBunny tier="길토끼" size={78} /></div><div className="absolute bottom-1 left-1/2 z-10 -translate-x-1/2"><TierBunny tier={tierLabel} size={105} /></div><div className="absolute bottom-0 right-3 rotate-6"><TierBunny tier={unlockedUnits.includes('ninja') ? '들토끼' : '풀토끼'} costume={unlockedUnits.includes('ninja') ? 'ninja' : undefined} size={78} /></div></div> : <div className="rounded-full bg-white/25 p-2 ring-1 ring-white/40"><TierBunny tier={tierLabel} size={88} /></div>}<p className="mt-1 text-[10px] font-black tracking-[0.22em] text-amber-700 dark:text-amber-300">RABBIT GUARDIANS</p><p className="mt-1 text-2xl font-black">{state.phase === 'ready' ? '토끼들아, 출동 준비!' : state.phase === 'won' ? '20스테이지 방어 성공!' : '토끼굴 방어 실패'}</p><p className="mt-1 text-xs text-current/70">{state.phase === 'ready' ? `매 스테이지 새 수호대를 편성해요 · 남은 도전 ${Math.max(0, 3 - attemptsUsed)}회` : resultMessage || `${state.clearedStages}스테이지 기록을 서버에서 검증 중...`}</p><button type="button" disabled={starting || (state.phase === 'ready' && attemptsUsed >= 3)} onClick={() => state.phase === 'ready' ? beginRun() : reset()} className="mt-3 rounded-full bg-amber-400 px-7 py-3 text-sm font-black text-gray-950 shadow-xl shadow-emerald-950/20 transition hover:-translate-y-0.5 disabled:opacity-40">{state.phase === 'ready' ? starting ? '도전권 확인 중...' : attemptsUsed >= 3 ? '오늘 도전 완료' : '수호대 출동!' : '다시 도전'}</button></div>}
         </div>
       </section>
 
@@ -185,7 +185,7 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
           {unlockedUnits.map((key) => {
             const unit = UNIT_CONFIG[key];
             const disabled = !['battle', 'preparation'].includes(state.phase) || state.carrots < unit.cost || state.allies.length >= GAME_CONFIG.maxAllies;
-            return <button key={key} type="button" disabled={disabled} onClick={() => spawn(key)} className="group relative w-[92px] shrink-0 overflow-hidden rounded-2xl border border-stone-200 bg-white px-2 pb-2 pt-1.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 disabled:cursor-not-allowed disabled:opacity-40 dark:border-stone-700 dark:bg-stone-900"><div className="mx-auto h-[62px] overflow-hidden"><TierBunny tier={unit.tier} costume={unit.costume} size={64} /></div><span className="block truncate text-[11px] font-black" style={{ color: unit.color }}>{unit.name}</span><span className="mt-0.5 block text-[10px] font-black text-orange-500">🥕 {unit.cost}</span><span className="mt-1 block truncate text-[8px] font-bold text-gray-400">공격 {unit.attack} · HP {unit.hp}</span></button>;
+            return <button key={key} type="button" disabled={disabled} onClick={() => spawn(key)} className="group relative w-[98px] shrink-0 overflow-hidden rounded-2xl border border-stone-200 bg-white px-2 pb-2 pt-1.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 disabled:cursor-not-allowed disabled:opacity-40 dark:border-stone-700 dark:bg-stone-900"><div className="mx-auto h-[62px] overflow-hidden"><TierBunny tier={unit.tier} costume={unit.costume} size={64} /></div><span className="block truncate text-[11px] font-black" style={{ color: unit.color }}>{unit.name}</span><span className="mt-0.5 block text-[10px] font-black text-orange-500">🥕 {unit.cost}</span><span className="mt-1 block truncate text-[8px] font-bold text-gray-400">공격 {unit.attack} · HP {unit.hp}</span><span className="mt-0.5 block text-[8px] font-black text-sky-600 dark:text-sky-400">{rangeLabel(unit.range)} · 사거리 {unit.range}</span></button>;
           })}
         </div>
       </section>

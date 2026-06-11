@@ -11,6 +11,8 @@ export const GAME_CONFIG = {
   startingCarrots: 30,
   passiveCarrotIntervalMs: 10_000,
   passiveCarrotAmount: 5,
+  stageClearCarrotBase: 80,
+  stageClearCarrotPerStage: 35,
 } as const;
 
 export type AttackStyle = 'bonk' | 'leaf' | 'dash' | 'moon' | 'star' | 'beam' | 'rocket' | 'flame' | 'shuriken' | 'slash' | 'heart' | 'magic' | 'coin' | 'laser' | 'fire' | 'gift';
@@ -32,6 +34,13 @@ export type GameUnitConfig = {
 };
 
 export const TIER_UNIT_KEYS: TierUnitKey[] = ['road', 'grass', 'field', 'moon', 'star', 'galaxy', 'space', 'legend'];
+
+export function rangeLabel(range: number) {
+  if (range >= 170) return '초장거리';
+  if (range >= 125) return '장거리';
+  if (range >= 90) return '중거리';
+  return '근거리';
+}
 
 export const UNIT_CONFIG: Record<UnitKey, GameUnitConfig> = {
   road: { name: '길토끼', tier: '길토끼', cost: 10, hp: 20, attack: 5, attackIntervalMs: 1_000, range: 75, speed: 38, color: '#94a3b8', attackStyle: 'bonk' },
@@ -57,17 +66,17 @@ export const ENEMY_CONFIG: Record<EnemyKey, { name: string; hp: number; armor: n
   fox: { name: '여우', hp: 48, armor: 2, attack: 9, attackIntervalMs: 1_200, range: 50, speed: 64, reward: 25, color: '#f97316' },
   wolf: { name: '늑대', hp: 95, armor: 8, attack: 16, attackIntervalMs: 1_500, range: 55, speed: 50, reward: 40, color: '#64748b' },
   tiger: { name: '호랑이', hp: 190, armor: 18, attack: 29, attackIntervalMs: 2_000, range: 60, speed: 36, reward: 60, color: '#ea580c' },
-  dragon: { name: '드래곤', hp: 10_000, armor: 38, attack: 58, attackIntervalMs: 2_500, range: 85, speed: 20, reward: 200, color: '#dc2626' },
+  dragon: { name: '드래곤', hp: 6_000, armor: 38, attack: 40, attackIntervalMs: 2_500, range: 85, speed: 20, reward: 200, color: '#dc2626' },
 };
 
 export function stageEnemyHpMultiplier(stage: number) {
   if (stage <= 5) return 1;
   if (stage <= 10) return 1 + (stage - 5) * 0.12;
   if (stage <= 15) return 2 + (stage - 10) * 0.35;
-  if (stage === 16) return 12;
-  if (stage === 17) return 16;
-  if (stage === 18) return 20;
-  if (stage === 19) return 24;
+  if (stage === 16) return 5;
+  if (stage === 17) return 7;
+  if (stage === 18) return 9;
+  if (stage === 19) return 5;
   return 1;
 }
 

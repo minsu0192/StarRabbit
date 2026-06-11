@@ -194,7 +194,12 @@ function finishStage(state: GameState) {
     addLog(state, '토끼굴을 지켜냈습니다!');
     return;
   }
-  addLog(state, `${state.stage}스테이지 클리어`);
+  const returningAllies = state.allies.length;
+  const supply = GAME_CONFIG.stageClearCarrotBase + state.stage * GAME_CONFIG.stageClearCarrotPerStage;
+  state.allies = [];
+  state.carrots += supply;
+  addLog(state, `${state.stage}스테이지 클리어 · 수호대 ${returningAllies}마리 귀환`);
+  addLog(state, `다음 작전 보급 (+${supply} 당근)`);
   state.phase = 'preparation';
   state.phaseElapsedMs = 0;
 }
