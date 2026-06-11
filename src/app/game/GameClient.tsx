@@ -44,6 +44,7 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
   const clockRef = useRef<number | null>(null);
   const commandsRef = useRef<SpawnCommand[]>([]);
   const finishingRunRef = useRef<string | null>(null);
+  const unitScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (state.phase !== 'battle' && state.phase !== 'preparation') return;
@@ -185,13 +186,17 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
 
       <section className="border-y border-stone-200 bg-[#fffdf8] py-4 dark:border-stone-800 dark:bg-[#171816]">
         <div className="flex items-center justify-between px-4"><div><h2 className="text-sm font-black">출전 가능한 토끼</h2><p className="mt-0.5 text-[10px] text-gray-400">등급 토끼 + 보유 코스튬</p></div><div className="text-right"><p className="text-xs font-black">{state.allies.length}/{GAME_CONFIG.maxAllies}</p><p className="max-w-40 truncate text-[10px] text-gray-400">{feedback}</p></div></div>
-        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
+        <div className="relative">
+          <button type="button" onClick={() => unitScrollRef.current?.scrollBy({ left: -240, behavior: 'smooth' })} className="absolute left-0 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full bg-white/90 shadow-md ring-1 ring-stone-200 transition hover:bg-amber-50 dark:bg-stone-800/90 dark:ring-stone-700 md:flex" style={{ width: 28, height: 28 }}>‹</button>
+          <button type="button" onClick={() => unitScrollRef.current?.scrollBy({ left: 240, behavior: 'smooth' })} className="absolute right-0 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full bg-white/90 shadow-md ring-1 ring-stone-200 transition hover:bg-amber-50 dark:bg-stone-800/90 dark:ring-stone-700 md:flex" style={{ width: 28, height: 28 }}>›</button>
+          <div ref={unitScrollRef} className="no-scrollbar mt-3 flex gap-2 overflow-x-auto px-4 pb-1 md:px-10">
           {unlockedUnits.map((key) => {
             const unit = UNIT_CONFIG[key];
             const disabled = !['battle', 'preparation'].includes(state.phase) || state.carrots < unit.cost || state.allies.length >= GAME_CONFIG.maxAllies;
             const classColor = unit.unitClass === '탱커' ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200' : unit.unitClass === '힐러' ? 'bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300' : unit.unitClass === '원거리' ? 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300' : 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300';
             return <button key={key} type="button" disabled={disabled} onClick={() => spawn(key)} className="group relative w-[116px] shrink-0 overflow-hidden rounded-2xl border border-stone-200 bg-white px-2 pb-2 pt-1.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 disabled:cursor-not-allowed disabled:opacity-40 dark:border-stone-700 dark:bg-stone-900"><span className={`absolute left-1.5 top-1.5 rounded-full px-1.5 py-0.5 text-[8px] font-black ${classColor}`}>{unit.unitClass}</span><div className="mx-auto h-[62px] overflow-hidden"><TierBunny tier={unit.tier} costume={unit.costume} size={64} /></div><span className="block truncate text-[11px] font-black" style={{ color: unit.color }}>{unit.name}</span><span className="mt-0.5 block text-[10px] font-black text-orange-500">🥕 {unit.cost}</span><span className="mt-1 block text-[8px] font-bold text-gray-400">공격 {unit.attack} · HP {unit.hp}</span><span className="mt-0.5 block text-[8px] font-black text-violet-600 dark:text-violet-400">공속 {attackSpeedLabel(unit.attackIntervalMs)}</span><span className="mt-0.5 block text-[8px] font-black text-sky-600 dark:text-sky-400">{rangeLabel(unit.range)} · {unit.range}</span><span className="mt-1 block min-h-6 text-[8px] font-semibold leading-tight text-gray-500 dark:text-gray-400">{unit.role}</span></button>;
           })}
+          </div>
         </div>
       </section>
 
