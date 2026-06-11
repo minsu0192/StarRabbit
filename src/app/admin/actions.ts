@@ -337,10 +337,15 @@ export async function resetGameAttempts() {
   const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
   const dateStr = today.toISOString().slice(0, 10);
 
+  await service.from('game_runs')
+    .delete()
+    .eq('user_id', adminUser.id)
+    .eq('game_date', dateStr);
+
   await service.from('game_daily_stats')
     .delete()
     .eq('user_id', adminUser.id)
     .eq('game_date', dateStr);
 
-  redirect('/admin?msg=' + encodeURIComponent('오늘 게임 판수 초기화 완료'));
+  redirect('/admin?msg=' + encodeURIComponent('오늘 게임 판수 및 기록 초기화 완료'));
 }
