@@ -11,6 +11,7 @@ import BunnyMascot from '@/components/BunnyMascot';
 import Header from '@/components/Header';
 import SiteFooter from '@/components/SiteFooter';
 import SortChips from '@/components/SortChips';
+import AdFitBanner from '@/components/AdFitBanner';
 import { createClient } from '@/lib/supabase/server';
 
 interface Props {
@@ -118,6 +119,8 @@ export default async function Home({ searchParams }: Props) {
           </p>
         </div>
       </div>
+
+      <AdFitBanner />
 
       <main className="flex-1">
         {webtoons.length === 0 ? (
