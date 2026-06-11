@@ -13,10 +13,21 @@ export async function startGameRun(): Promise<StartResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: '로그인이 필요합니다' };
-  const { data, error } = await supabase.rpc('start_rabbit_game');
+  let { data, error } = await supabase.rpc('start_rabbit_game');
+  if (error?.message.includes('active run exists')) {
+    const service = createServiceClient();
+    const { error: expireError } = await service.from('game_runs')
+      .update({ status: 'expired', finished_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+      .eq('status', 'active');
+    if (expireError) return { error: '이전 게임을 종료하지 못했습니다. 잠시 후 다시 시도해주세요' };
+    const retry = await supabase.rpc('start_rabbit_game');
+    data = retry.data;
+    error = retry.error;
+  }
   if (error) {
     if (error.message.includes('daily attempts exhausted')) return { error: '오늘의 도전 3회를 모두 사용했어요' };
-    if (error.message.includes('active run exists')) return { error: '진행 중인 게임이 있어요. 45분 후 다시 시도해주세요' };
+    if (error.message.includes('active run exists')) return { error: '이전 게임을 정리하지 못했습니다. 다시 시도해주세요' };
     return { error: error.message.includes('start_rabbit_game') ? '게임 DB 설정이 필요합니다' : error.message };
   }
   const result = data as { run_id: string; attempts_used: number; best_stage: number };

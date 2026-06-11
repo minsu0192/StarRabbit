@@ -73,6 +73,7 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
   }, [runId, state.clearedStages, state.phase, state.totalElapsedMs]);
 
   const remainingMs = state.phase === 'battle' ? GAME_CONFIG.stageDurationMs - state.stageElapsedMs : GAME_CONFIG.preparationDurationMs - state.phaseElapsedMs;
+  const displayedBestStage = Math.max(bestStage, state.clearedStages);
   const visibleLogs = state.logs.slice(0, 3);
   const enemyCounts = useMemo(() => state.enemies.reduce<Record<string, number>>((counts, enemy) => {
     counts[enemy.key] = (counts[enemy.key] ?? 0) + 1;
@@ -103,7 +104,7 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
       return;
     }
     setStarting(true);
-    setFeedback('서버에서 도전권을 확인하고 있어요.');
+    setFeedback('도전권을 확인하고 이전 실행이 있으면 정리하고 있어요.');
     const result = await startGameRun();
     setStarting(false);
     if (result.error || !result.runId) {
@@ -127,7 +128,7 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
           <div>
             <p className="text-[10px] font-black tracking-[0.2em] text-amber-600">RABBIT HOLE GUARDIANS</p>
             <h1 className="mt-1 text-2xl font-black tracking-tight">토끼굴 수호대</h1>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400"><b className="text-gray-800 dark:text-gray-200">{nickname}</b> 수호대장 · {tierLabel} · 오늘 {attemptsUsed}/3회 · 최고 {bestStage}</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400"><b className="text-gray-800 dark:text-gray-200">{nickname}</b> 수호대장 · {tierLabel}</p>
           </div>
           <div className="rounded-2xl border border-amber-200 bg-white/80 px-3 py-2 text-right shadow-sm dark:border-amber-900 dark:bg-black/20">
             <p className="text-[10px] font-bold text-gray-400">STAGE</p>
@@ -136,12 +137,13 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
         </div>
       </section>
 
-      <section className="grid grid-cols-[1fr_auto_auto] items-center gap-2 border-b border-stone-200 bg-white px-4 py-3 dark:border-stone-800 dark:bg-[#171816]">
-        <div>
+      <section className="grid grid-cols-3 items-center gap-2 border-b border-stone-200 bg-white px-3 py-3 sm:grid-cols-[1fr_auto_auto_auto] sm:px-4 dark:border-stone-800 dark:bg-[#171816]">
+        <div className="col-span-3 sm:col-span-1">
           <div className="flex justify-between text-[11px] font-bold"><span>토끼굴 내구도</span><span>{state.burrowHp}/100</span></div>
           <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-stone-100 ring-1 ring-stone-200 dark:bg-stone-800 dark:ring-stone-700"><div className="h-full rounded-full bg-gradient-to-r from-rose-500 to-orange-400 transition-[width]" style={{ width: `${Math.max(0, state.burrowHp)}%` }} /></div>
         </div>
         <div className="min-w-16 rounded-xl bg-orange-50 px-2.5 py-2 text-center dark:bg-orange-950/30"><p className="text-[9px] font-bold text-orange-500">CARROT</p><p className="font-black tabular-nums">🥕 {state.carrots}</p></div>
+        <div className="min-w-14 rounded-xl bg-emerald-50 px-2 py-2 text-center dark:bg-emerald-950/30"><p className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">오늘 최고</p><p className="font-black tabular-nums text-emerald-700 dark:text-emerald-300">{displayedBestStage}<span className="text-[9px]">단계</span></p></div>
         <button type="button" onClick={() => setSpeed((value) => value === 1 ? 2 : value === 2 ? 3 : 1)} className="h-full min-w-14 rounded-xl border border-stone-200 bg-stone-50 px-2 text-xs font-black dark:border-stone-700 dark:bg-stone-900" aria-label="게임 속도 변경">{speed}×<span className="ml-1 text-[9px] text-gray-400">속도</span></button>
       </section>
 
@@ -175,7 +177,7 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
             {Object.keys(enemyCounts).length === 0 ? '적 출현 대기' : Object.entries(enemyCounts).map(([key, count]) => `${ENEMY_CONFIG[key as EnemyKey].name} ${count}`).join(' · ')}
           </div>
 
-          {(state.phase === 'ready' || state.phase === 'won' || state.phase === 'lost') && <div className="absolute inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#fff3ba]/95 via-[#dff7d8]/95 to-[#8bc982]/95 px-6 text-center text-[#273322] backdrop-blur-[3px] dark:from-[#26351d]/95 dark:via-[#173126]/95 dark:to-[#173c24]/95 dark:text-white"><span className="game-intro-star absolute left-8 top-8 text-2xl text-amber-400">★</span><span className="game-intro-star absolute right-10 top-14 text-lg text-amber-300">✦</span><span className="game-intro-carrot absolute right-6 top-28 text-2xl">🥕</span>{state.phase === 'ready' ? <div className="relative h-28 w-56"><div className="absolute bottom-0 left-4 -rotate-6"><TierBunny tier="길토끼" size={78} /></div><div className="absolute bottom-1 left-1/2 z-10 -translate-x-1/2"><TierBunny tier={tierLabel} size={105} /></div><div className="absolute bottom-0 right-3 rotate-6"><TierBunny tier={unlockedUnits.includes('ninja') ? '들토끼' : '풀토끼'} costume={unlockedUnits.includes('ninja') ? 'ninja' : undefined} size={78} /></div></div> : <div className="rounded-full bg-white/25 p-2 ring-1 ring-white/40"><TierBunny tier={tierLabel} size={88} /></div>}<p className="mt-1 text-[10px] font-black tracking-[0.22em] text-amber-700 dark:text-amber-300">RABBIT GUARDIANS</p><p className="mt-1 text-2xl font-black">{state.phase === 'ready' ? '토끼들아, 출동 준비!' : state.phase === 'won' ? '20스테이지 방어 성공!' : '토끼굴 방어 실패'}</p><p className="mt-1 text-xs text-current/70">{state.phase === 'ready' ? `매 스테이지 새 수호대를 편성해요 · 남은 도전 ${Math.max(0, 3 - attemptsUsed)}회` : resultMessage || `${state.clearedStages}스테이지 기록을 서버에서 검증 중...`}</p><button type="button" disabled={starting || (state.phase === 'ready' && attemptsUsed >= 3)} onClick={() => state.phase === 'ready' ? beginRun() : reset()} className="mt-3 rounded-full bg-amber-400 px-7 py-3 text-sm font-black text-gray-950 shadow-xl shadow-emerald-950/20 transition hover:-translate-y-0.5 disabled:opacity-40">{state.phase === 'ready' ? starting ? '도전권 확인 중...' : attemptsUsed >= 3 ? '오늘 도전 완료' : '수호대 출동!' : '다시 도전'}</button></div>}
+          {(state.phase === 'ready' || state.phase === 'won' || state.phase === 'lost') && <div className="absolute inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#fff3ba]/95 via-[#dff7d8]/95 to-[#8bc982]/95 px-6 text-center text-[#273322] backdrop-blur-[3px] dark:from-[#26351d]/95 dark:via-[#173126]/95 dark:to-[#173c24]/95 dark:text-white"><span className="game-intro-star absolute left-8 top-8 text-2xl text-amber-400">★</span><span className="game-intro-star absolute right-10 top-14 text-lg text-amber-300">✦</span><span className="game-intro-carrot absolute right-6 top-28 text-2xl">🥕</span>{state.phase === 'ready' ? <div className="relative h-28 w-56"><div className="absolute bottom-0 left-4 -rotate-6"><TierBunny tier="길토끼" size={78} /></div><div className="absolute bottom-1 left-1/2 z-10 -translate-x-1/2"><TierBunny tier={tierLabel} size={105} /></div><div className="absolute bottom-0 right-3 rotate-6"><TierBunny tier={unlockedUnits.includes('ninja') ? '들토끼' : '풀토끼'} costume={unlockedUnits.includes('ninja') ? 'ninja' : undefined} size={78} /></div></div> : <div className="rounded-full bg-white/25 p-2 ring-1 ring-white/40"><TierBunny tier={tierLabel} size={88} /></div>}<p className="mt-1 text-[10px] font-black tracking-[0.22em] text-amber-700 dark:text-amber-300">RABBIT GUARDIANS</p><p className="mt-1 text-2xl font-black">{state.phase === 'ready' ? '토끼들아, 출동 준비!' : state.phase === 'won' ? '20스테이지 방어 성공!' : '토끼굴 방어 실패'}</p><p className="mt-1 text-xs font-bold">오늘 최고 {displayedBestStage}스테이지 · 도전 {attemptsUsed}/3회</p><p className="mt-0.5 text-[11px] text-current/65">{state.phase === 'ready' ? '기록은 게임이 종료되고 서버 검증이 끝나면 저장돼요.' : resultMessage || `${state.clearedStages}스테이지 기록을 서버에서 검증 중...`}</p><button type="button" disabled={starting || (state.phase === 'ready' && attemptsUsed >= 3)} onClick={() => state.phase === 'ready' ? beginRun() : reset()} className="mt-3 rounded-full bg-amber-400 px-7 py-3 text-sm font-black text-gray-950 shadow-xl shadow-emerald-950/20 transition hover:-translate-y-0.5 disabled:opacity-40">{state.phase === 'ready' ? starting ? '도전권 확인 중...' : attemptsUsed >= 3 ? '오늘 도전 완료' : '수호대 출동!' : '다시 도전'}</button></div>}
         </div>
       </section>
 
