@@ -69,6 +69,8 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
       setResultMessage(result.rewardStars
         ? `서버 검증 완료 · ${result.rewardStars}스타 지급`
         : '서버 검증 완료 · 지급할 스타가 없습니다');
+    }).catch(() => {
+      setResultMessage('검증 실패: 서버 연결 오류. 포인트가 지급되지 않았습니다.');
     });
   }, [runId, state.clearedStages, state.phase, state.totalElapsedMs]);
 
