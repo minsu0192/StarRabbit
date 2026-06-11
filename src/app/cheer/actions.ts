@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { awardPoints } from '@/lib/point-awards';
 import { containsProfanity, containsPromoLink } from '@/lib/filter';
 
 function clean(value: FormDataEntryValue | null) {
@@ -51,12 +52,12 @@ export async function submitCheerComment(formData: FormData) {
     { onConflict: 'event_id,user_id' },
   );
   if (!error) {
-    await supabase.rpc('award_points', {
-      p_user_id: user.id,
-      p_amount: 50,
-      p_reason: '응원전 참여',
-      p_unique_key: `cheer:${eventId}:${user.id}`,
-      p_metadata: { event_id: eventId, webtoon_id: webtoonId },
+    await awardPoints({
+      userId: user.id,
+      amount: 50,
+      reason: '응원전 참여',
+      uniqueKey: `cheer:${eventId}:${user.id}`,
+      metadata: { event_id: eventId, webtoon_id: webtoonId },
     });
   }
 

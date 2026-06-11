@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { awardReviewPoints, awardAttendanceStars } from '@/lib/points';
+import { awardPoints } from '@/lib/point-awards';
 import { validateReplyInput, validateReviewInput } from '@/lib/review-validation';
 
 export async function createOrUpdateReview(
@@ -36,7 +37,7 @@ export async function createOrUpdateReview(
 
   if (error) return { error: error.message };
 
-  await awardReviewPoints(supabase, user.id, existingReview?.comment, validation.comment, webtoonId);
+  await awardReviewPoints(user.id, existingReview?.comment, validation.comment, webtoonId);
 
   return {};
 }
@@ -165,12 +166,12 @@ export async function createReply(
     .insert({ review_id: reviewId, user_id: user.id, comment: validation.comment });
 
   if (!error) {
-    const { error: pointError } = await supabase.rpc('award_points', {
-      p_user_id: user.id,
-      p_amount: 5,
-      p_reason: '댓글 작성',
-      p_unique_key: `reply:${user.id}:${reviewId}`,
-      p_metadata: { review_id: reviewId },
+    const { error: pointError } = await awardPoints({
+      userId: user.id,
+      amount: 5,
+      reason: '댓글 작성',
+      uniqueKey: `reply:${user.id}:${reviewId}`,
+      metadata: { review_id: reviewId },
     });
     if (pointError) console.error('reply award_points failed', pointError);
   }

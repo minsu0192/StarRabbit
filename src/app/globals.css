@@ -61,6 +61,88 @@ textarea {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+@media (prefers-reduced-motion: reduce) {
+  .game-combatant {
+    transition: none !important;
+  }
+
+  .game-bunny,
+  .attack-effect {
+    animation: none !important;
+  }
+}
+
+.battlefield::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 38px;
+  height: 26px;
+  background: repeating-linear-gradient(90deg, transparent 0 48px, rgba(255, 255, 255, .13) 48px 50px);
+  pointer-events: none;
+}
+
+.game-combatant.is-attacking .game-bunny {
+  animation: rabbit-lunge 280ms ease-out;
+}
+
+.attack-effect {
+  position: absolute;
+  left: -2px;
+  top: 25px;
+  z-index: 5;
+  color: var(--unit-color);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .28));
+  animation: rabbit-projectile 300ms ease-out forwards;
+}
+
+.attack-slash,
+.attack-bonk,
+.attack-dash {
+  font-size: 28px;
+  animation-name: rabbit-slash;
+}
+
+.attack-beam,
+.attack-laser {
+  width: 38px;
+  overflow: hidden;
+  transform-origin: left center;
+  animation-name: rabbit-beam;
+}
+
+.attack-flame,
+.attack-fire,
+.attack-magic {
+  text-shadow: 0 0 8px currentColor;
+}
+
+@keyframes rabbit-lunge {
+  0% { transform: translateX(0) rotate(0); }
+  45% { transform: translateX(-9px) rotate(-5deg) scale(1.06); }
+  100% { transform: translateX(0) rotate(0); }
+}
+
+@keyframes rabbit-projectile {
+  0% { opacity: 0; transform: translateX(0) scale(.6) rotate(0); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-48px) scale(1.05) rotate(-220deg); }
+}
+
+@keyframes rabbit-slash {
+  0% { opacity: 0; transform: translateX(-3px) rotate(-25deg) scale(.5); }
+  35% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-25px) rotate(15deg) scale(1.45); }
+}
+
+@keyframes rabbit-beam {
+  0% { opacity: 0; transform: translateX(-2px) scaleX(.1); }
+  30% { opacity: 1; transform: translateX(-8px) scaleX(1); }
+  100% { opacity: 0; transform: translateX(-54px) scaleX(1.6); }
+}
+
 html[data-app-theme="excel"] body {
   background:
     linear-gradient(#e3ebe1 1px, transparent 1px),

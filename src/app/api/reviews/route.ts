@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
   if (error) return errorResponse(error.message, 500);
 
-  await awardReviewPoints(supabase, user.id, existingReview?.comment, validation.comment, webtoonId);
+  await awardReviewPoints(user.id, existingReview?.comment, validation.comment, webtoonId);
 
   return NextResponse.json({ ok: true });
 }

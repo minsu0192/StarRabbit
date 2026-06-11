@@ -1,4 +1,5 @@
 import type { createClient } from '@/lib/supabase/server';
+import { awardPoints } from '@/lib/point-awards';
 
 type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -61,7 +62,6 @@ function todayInKst() {
 }
 
 export async function awardReviewPoints(
-  supabase: ServerSupabaseClient,
   userId: string,
   previousComment: string | null | undefined,
   nextComment: string,
@@ -80,20 +80,15 @@ export async function awardReviewPoints(
 
   const uniqueKey = `review:${userId}:${webtoonId ?? 'unknown'}:${reason}`;
 
-  const { data, error } = await supabase.rpc('award_points', {
-    p_user_id: userId,
-    p_amount: delta,
-    p_reason: reason,
-    p_unique_key: uniqueKey,
-    p_metadata: webtoonId ? { webtoon_id: webtoonId } : {},
+  const result = await awardPoints({
+    userId,
+    amount: delta,
+    reason,
+    uniqueKey,
+    metadata: webtoonId ? { webtoon_id: webtoonId } : {},
   });
 
-  if (error) {
-    console.error('awardReviewPoints failed', error);
-    return { awarded: false, error: error.message };
-  }
-
-  return { awarded: data === true };
+  return result;
 }
 
 export async function awardAttendanceStars(
@@ -102,21 +97,16 @@ export async function awardAttendanceStars(
 ): Promise<{ success: boolean; error?: string }> {
   const today = todayInKst();
 
-  const { data: result, error: awardError } = await supabase
-    .rpc('award_points', {
-      p_user_id: userId,
-      p_amount: 50,
-      p_reason: '출석 체크',
-      p_unique_key: `attendance:${userId}:${today}`,
-      p_metadata: { date: today },
-    });
+  const result = await awardPoints({
+    userId,
+    amount: 50,
+    reason: '출석 체크',
+    uniqueKey: `attendance:${userId}:${today}`,
+    metadata: { date: today },
+  });
 
-  if (awardError) {
-    console.error('awardAttendanceStars failed', awardError);
-    return { success: false, error: '출석 체크를 처리하지 못했어요' };
-  }
-
-  if (result === false) {
+  if (result.error) return { success: false, error: '출석 체크를 처리하지 못했어요' };
+  if (!result.awarded) {
     return { success: false, error: '오늘은 이미 출석 체크를 했어요' };
   }
 

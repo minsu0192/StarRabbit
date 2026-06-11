@@ -62,6 +62,9 @@ export default async function Header() {
           <Link href="/cheer" className="hidden text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:hover:text-gray-100 min-[480px]:block">
             응원
           </Link>
+          <Link href="/game" className="text-xs font-semibold text-emerald-600 transition-colors hover:text-emerald-700 dark:text-emerald-400">
+            게임
+          </Link>
           <Link href="/shop" className="hidden text-xs font-semibold text-amber-600 transition-colors hover:text-amber-700 dark:text-amber-400 min-[480px]:block">
             상점
           </Link>

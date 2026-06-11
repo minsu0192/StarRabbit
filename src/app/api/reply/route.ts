@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { createClient } from '@/lib/supabase/server';
+import { awardPoints } from '@/lib/point-awards';
 import { validateReplyInput } from '@/lib/review-validation';
 
 export async function POST(request: Request) {
@@ -23,12 +24,12 @@ export async function POST(request: Request) {
 
     if (error) return Response.json({ error: error.message }, { status: 500 });
 
-    const { error: pointError } = await supabase.rpc('award_points', {
-      p_user_id: user.id,
-      p_amount: 5,
-      p_reason: '댓글 작성',
-      p_unique_key: `reply:${user.id}:${reviewId}`,
-      p_metadata: { review_id: reviewId },
+    const { error: pointError } = await awardPoints({
+      userId: user.id,
+      amount: 5,
+      reason: '댓글 작성',
+      uniqueKey: `reply:${user.id}:${reviewId}`,
+      metadata: { review_id: reviewId },
     });
 
     if (pointError) {
