@@ -167,6 +167,11 @@ function runCombat(state: GameState, tickMs: number) {
   }
   state.burrowHp = Math.max(0, state.burrowHp - burrowDamage);
 
+  if (princessCount > 0 && state.totalElapsedMs % 4_000 < tickMs) {
+    const heal = princessCount * 3;
+    for (const ally of state.allies) ally.hp = Math.min(ally.maxHp, ally.hp + heal);
+  }
+
   const santaCount = state.allies.filter((ally) => ally.key === 'santa').length;
   if (santaCount > 0 && state.totalElapsedMs % 5_000 < tickMs) {
     const heal = santaCount * 4;

@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.game_runs (
   unlock_snapshot jsonb NOT NULL DEFAULT '[]'::jsonb,
   command_log jsonb NOT NULL DEFAULT '[]'::jsonb,
   final_stage smallint NOT NULL DEFAULT 0 CHECK (final_stage BETWEEN 0 AND 20),
-  reward_stars int NOT NULL DEFAULT 0 CHECK (reward_stars BETWEEN 0 AND 400),
+  reward_stars int NOT NULL DEFAULT 0 CHECK (reward_stars BETWEEN 0 AND 200),
   elapsed_ms int NOT NULL DEFAULT 0 CHECK (elapsed_ms >= 0),
   started_at timestamptz NOT NULL DEFAULT now(),
   finished_at timestamptz,
@@ -128,11 +128,11 @@ BEGIN
   IF p_final_stage > 0 THEN
     FOR v_stage IN 1..p_final_stage LOOP
       INSERT INTO public.point_transactions(user_id, amount, reason, unique_key, metadata)
-      VALUES (p_user_id, 20, '토끼굴 수호대 ' || v_stage || '스테이지',
+      VALUES (p_user_id, 10, '토끼굴 수호대 ' || v_stage || '스테이지',
         'game:' || p_run_id || ':stage:' || v_stage,
         jsonb_build_object('run_id', p_run_id, 'stage', v_stage, 'game_date', v_run.game_date))
       ON CONFLICT (unique_key) DO NOTHING;
-      IF FOUND THEN v_reward := v_reward + 20; END IF;
+      IF FOUND THEN v_reward := v_reward + 10; END IF;
     END LOOP;
 
     UPDATE public.profiles SET points = points + v_reward, earned_points = earned_points + v_reward WHERE id = p_user_id;
