@@ -66,7 +66,7 @@ export const UNIT_CONFIG: Record<UnitKey, GameUnitConfig> = {
   pirate: { name: '해적토끼', role: '처치 당근 보너스 · 2명 공격', unitClass: '원거리', tier: '별토끼', costume: 'pirate', cost: 110, hp: 100, attack: 35, attackIntervalMs: 1_150, range: 155, speed: 24, color: '#92400e', attackStyle: 'coin', armorPierce: 25, splashTargets: 2 },
   astronaut: { name: '우주비행사토끼', role: '장거리 레이저 · 2명 공격', unitClass: '원거리', tier: '우주토끼', costume: 'astronaut', cost: 185, hp: 135, attack: 62, attackIntervalMs: 1_350, range: 235, speed: 19, color: '#64748b', attackStyle: 'laser', armorPierce: 40, splashTargets: 2 },
   devil: { name: '악마토끼', role: '낮은 체력 · 빠른 고화력', unitClass: '근거리', tier: '전설토끼', costume: 'devil', cost: 140, hp: 65, attack: 72, attackIntervalMs: 900, range: 85, speed: 34, color: '#be123c', attackStyle: 'fire', armorPierce: 30, splashTargets: 2 },
-  santa: { name: '산타토끼', role: '5초마다 아군·토끼굴 회복', unitClass: '힐러', tier: '별토끼', costume: 'santa', cost: 105, hp: 120, attack: 22, attackIntervalMs: 1_400, range: 140, speed: 23, color: '#dc2626', attackStyle: 'gift', armorPierce: 20, splashTargets: 2 },
+  santa: { name: '산타토끼', role: '5초마다 전열 아군·토끼굴 회복 · 순수 지원가', unitClass: '힐러', tier: '별토끼', costume: 'santa', cost: 105, hp: 120, attack: 0, attackIntervalMs: 5_000, range: 180, speed: 23, color: '#dc2626', attackStyle: 'gift' },
 };
 
 export const ENEMY_CONFIG: Record<EnemyKey, { name: string; hp: number; armor: number; attack: number; attackIntervalMs: number; range: number; speed: number; reward: number; color: string }> = {

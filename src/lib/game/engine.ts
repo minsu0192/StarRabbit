@@ -94,6 +94,14 @@ function foremostEnemy(enemies: Combatant[]) {
 
 function runMovement(state: GameState, dtSeconds: number) {
   for (const ally of state.allies) {
+    if (ally.key === 'santa') {
+      const frontAllies = state.allies.filter((unit) => unit.key !== 'santa');
+      const frontline = [...frontAllies].sort((a, b) => a.x - b.x)[0];
+      const supportX = Math.min(GAME_CONFIG.burrowX - 45, (frontline?.x ?? GAME_CONFIG.burrowX - 140) + 105);
+      const step = UNIT_CONFIG.santa.speed * dtSeconds;
+      ally.x = ally.x < supportX ? Math.min(supportX, ally.x + step) : Math.max(supportX, ally.x - step);
+      continue;
+    }
     const target = foremostEnemy(state.enemies);
     if (!target) continue;
     const config = UNIT_CONFIG[ally.key as UnitKey];
@@ -125,6 +133,7 @@ function runCombat(state: GameState, tickMs: number) {
 
   for (const ally of state.allies) {
     const config = UNIT_CONFIG[ally.key as UnitKey];
+    if (config.attack <= 0) continue;
     const targets = state.enemies
       .filter((enemy) => Math.abs(ally.x - enemy.x) <= config.range)
       .sort((a, b) => b.x - a.x)
@@ -174,9 +183,14 @@ function runCombat(state: GameState, tickMs: number) {
 
   const santaCount = state.allies.filter((ally) => ally.key === 'santa').length;
   if (santaCount > 0 && state.totalElapsedMs % 5_000 < tickMs) {
-    const heal = santaCount * 4;
-    for (const ally of state.allies) ally.hp = Math.min(ally.maxHp, ally.hp + heal);
-    state.burrowHp = Math.min(GAME_CONFIG.burrowMaxHp, state.burrowHp + Math.min(5, santaCount));
+    const heal = santaCount * 8;
+    const frontline = state.allies
+      .filter((ally) => ally.key !== 'santa' && ally.hp < ally.maxHp)
+      .sort((a, b) => a.x - b.x)
+      .slice(0, 3 * santaCount);
+    for (const ally of frontline) ally.hp = Math.min(ally.maxHp, ally.hp + heal);
+    for (const santa of state.allies.filter((ally) => ally.key === 'santa')) santa.lastAttackAtMs = state.totalElapsedMs;
+    state.burrowHp = Math.min(GAME_CONFIG.burrowMaxHp, state.burrowHp + Math.min(8, santaCount * 2));
   }
 
   const defeatedEnemies = state.enemies.filter((enemy) => enemy.hp <= 0);

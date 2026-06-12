@@ -12,8 +12,9 @@ export const POINT_RULES = [
   { label: '주간랭킹 3위', points: 300, description: '그 주 받은 추천수 3위' },
   { label: '주간랭킹 4위', points: 200, description: '그 주 받은 추천수 4위' },
   { label: '주간랭킹 5위', points: 100, description: '그 주 받은 추천수 5위' },
-  { label: '별점만 남기기', points: 5, description: '작품당 최초 1회' },
-  { label: '별점과 한줄평 남기기', points: 15, description: '작품당 최초 1회, 별점만 남긴 뒤 한줄평 추가 시 차액 10스타' },
+  { label: '첫 리뷰 작성', points: 100, description: '계정당 최초 1회 보너스' },
+  { label: '별점만 남기기', points: 10, description: '작품당 최초 1회' },
+  { label: '별점과 한줄평 남기기', points: 30, description: '작품당 최초 1회, 별점만 남긴 뒤 한줄평 추가 시 차액 20스타' },
   { label: '응원전 참여', points: 50, description: '이벤트당 응원 댓글 최초 1회' },
   { label: '응원전 승리팀', points: 500, description: '이벤트 종료 시 승리 작품 응원 댓글 작성자' },
   { label: '응원전 패배팀', points: 200, description: '이벤트 종료 시 패배 작품 응원 댓글 작성자' },
@@ -47,7 +48,7 @@ export function getPointLevel(earnedPoints: number) {
 }
 
 export function reviewPointValue(comment: string | null | undefined) {
-  return String(comment ?? '').trim() ? 15 : 5;
+  return String(comment ?? '').trim() ? 30 : 10;
 }
 
 function todayInKst() {
@@ -66,19 +67,20 @@ export async function awardReviewPoints(
   previousComment: string | null | undefined,
   nextComment: string,
   webtoonId?: string,
+  isFirstReview = false,
 ): Promise<{ awarded: boolean; error?: string }> {
   const previousPoints = previousComment === undefined ? 0 : reviewPointValue(previousComment);
   const nextPoints = reviewPointValue(nextComment);
   const delta = Math.max(nextPoints - previousPoints, 0);
   if (delta <= 0) return { awarded: false };
 
-  const reason = nextPoints === 15 && previousPoints === 5
+  const reason = nextPoints === 30 && previousPoints === 10
     ? '한줄평 추가 작성'
-    : nextPoints === 15
+    : nextPoints === 30
       ? '별점 + 한줄평 남기기'
       : '별점 남기기';
 
-  const uniqueKey = `review:${userId}:${webtoonId ?? 'unknown'}:${reason}`;
+  const uniqueKey = `review:v2:${userId}:${webtoonId ?? 'unknown'}:${reason}`;
 
   const result = await awardPoints({
     userId,
@@ -87,6 +89,20 @@ export async function awardReviewPoints(
     uniqueKey,
     metadata: webtoonId ? { webtoon_id: webtoonId } : {},
   });
+
+  if (result.error) return result;
+
+  if (isFirstReview) {
+    const firstReviewResult = await awardPoints({
+      userId,
+      amount: 100,
+      reason: '첫 리뷰 작성 보너스',
+      uniqueKey: `review:first:${userId}`,
+      metadata: webtoonId ? { webtoon_id: webtoonId } : {},
+    });
+    if (firstReviewResult.error) return firstReviewResult;
+    return { awarded: result.awarded || firstReviewResult.awarded };
+  }
 
   return result;
 }

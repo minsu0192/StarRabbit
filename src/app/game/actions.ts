@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { advanceGame, applySpawnCommand, createInitialGameState, startGame } from '@/lib/game/engine';
 import { GAME_CONFIG, UNIT_CONFIG } from '@/lib/game/config';
+import { MAX_ATTEMPTS_PER_DAY } from '@/lib/game/rewards';
 import type { SpawnCommand, UnitKey } from '@/lib/game/types';
 
 type StartResult = { runId?: string; attemptsUsed?: number; bestStage?: number; error?: string };
@@ -26,7 +27,7 @@ export async function startGameRun(): Promise<StartResult> {
     error = retry.error;
   }
   if (error) {
-    if (error.message.includes('daily attempts exhausted')) return { error: '오늘의 도전 3회를 모두 사용했어요' };
+    if (error.message.includes('daily attempts exhausted')) return { error: `오늘의 도전 ${MAX_ATTEMPTS_PER_DAY}회를 모두 사용했어요` };
     if (error.message.includes('active run exists')) return { error: '이전 게임을 정리하지 못했습니다. 다시 시도해주세요' };
     return { error: error.message.includes('start_rabbit_game') ? '게임 DB 설정이 필요합니다' : error.message };
   }

@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS public.game_daily_stats (
   user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   game_date date NOT NULL,
-  attempts_used smallint NOT NULL DEFAULT 0 CHECK (attempts_used BETWEEN 0 AND 3),
+  attempts_used smallint NOT NULL DEFAULT 0 CHECK (attempts_used BETWEEN 0 AND 5),
   best_stage smallint NOT NULL DEFAULT 0 CHECK (best_stage BETWEEN 0 AND 20),
   updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (user_id, game_date)
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS public.game_runs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   game_date date NOT NULL,
-  attempt_no smallint NOT NULL CHECK (attempt_no BETWEEN 1 AND 3),
+  attempt_no smallint NOT NULL CHECK (attempt_no BETWEEN 1 AND 5),
   status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'cleared', 'failed', 'expired', 'rejected')),
   unlock_snapshot jsonb NOT NULL DEFAULT '[]'::jsonb,
   command_log jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -73,7 +73,7 @@ BEGIN
   IF EXISTS (SELECT 1 FROM public.game_runs WHERE user_id = v_user_id AND status = 'active') THEN
     RAISE EXCEPTION 'active run exists';
   END IF;
-  IF v_stats.attempts_used >= 3 THEN RAISE EXCEPTION 'daily attempts exhausted'; END IF;
+  IF v_stats.attempts_used >= 5 THEN RAISE EXCEPTION 'daily attempts exhausted'; END IF;
 
   v_tier_count := CASE
     WHEN v_earned >= 50000 THEN 8 WHEN v_earned >= 15000 THEN 7

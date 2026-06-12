@@ -30,12 +30,10 @@ export async function POST(request: NextRequest) {
   const validation = validateReviewInput(body?.score, body?.comment);
   if ('error' in validation) return errorResponse(validation.error);
 
-  const { data: existingReview } = await supabase
-    .from('reviews')
-    .select('comment')
-    .eq('webtoon_id', webtoonId)
-    .eq('user_id', user.id)
-    .maybeSingle();
+  const [{ data: existingReview }, { count: reviewCount }] = await Promise.all([
+    supabase.from('reviews').select('comment').eq('webtoon_id', webtoonId).eq('user_id', user.id).maybeSingle(),
+    supabase.from('reviews').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+  ]);
 
   const { error } = await supabase.from('reviews').upsert(
     { webtoon_id: webtoonId, user_id: user.id, score: validation.score, comment: validation.comment },
@@ -44,7 +42,7 @@ export async function POST(request: NextRequest) {
 
   if (error) return errorResponse(error.message, 500);
 
-  await awardReviewPoints(user.id, existingReview?.comment, validation.comment, webtoonId);
+  await awardReviewPoints(user.id, existingReview?.comment, validation.comment, webtoonId, reviewCount === 0);
 
   return NextResponse.json({ ok: true });
 }

@@ -23,12 +23,10 @@ export async function createOrUpdateReview(
   const validation = validateReviewInput(score, comment);
   if ('error' in validation) return { error: validation.error };
 
-  const { data: existingReview } = await supabase
-    .from('reviews')
-    .select('comment')
-    .eq('webtoon_id', webtoonId)
-    .eq('user_id', user.id)
-    .maybeSingle();
+  const [{ data: existingReview }, { count: reviewCount }] = await Promise.all([
+    supabase.from('reviews').select('comment').eq('webtoon_id', webtoonId).eq('user_id', user.id).maybeSingle(),
+    supabase.from('reviews').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+  ]);
 
   const { error } = await supabase.from('reviews').upsert(
     { webtoon_id: webtoonId, user_id: user.id, score: validation.score, comment: validation.comment },
@@ -37,7 +35,7 @@ export async function createOrUpdateReview(
 
   if (error) return { error: error.message };
 
-  await awardReviewPoints(user.id, existingReview?.comment, validation.comment, webtoonId);
+  await awardReviewPoints(user.id, existingReview?.comment, validation.comment, webtoonId, reviewCount === 0);
 
   return {};
 }

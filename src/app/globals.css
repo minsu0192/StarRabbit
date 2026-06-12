@@ -87,6 +87,20 @@ textarea {
   animation: rabbit-lunge 280ms ease-out;
 }
 
+.enemy-sprite { transform-origin: bottom center; animation: enemy-march .65s ease-in-out infinite alternate; }
+.boss-enemy .enemy-sprite { filter: drop-shadow(0 0 8px rgba(251, 191, 36, .7)); }
+.healing-effect { color: #fef08a; text-shadow: 0 0 8px #22c55e, 0 0 14px #facc15; animation: healing-pulse .55s ease-out forwards; }
+
+@keyframes enemy-march {
+  from { transform: translateY(0) rotate(-1deg); }
+  to { transform: translateY(-2px) rotate(1deg); }
+}
+
+@keyframes healing-pulse {
+  from { opacity: 1; transform: translate(-10px, 8px) scale(.7); }
+  to { opacity: 0; transform: translate(-34px, -30px) scale(1.8); }
+}
+
 .attack-effect {
   position: absolute;
   left: -2px;
