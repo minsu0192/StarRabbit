@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import TierBunny from '@/components/TierBunny';
 import EnemySprite from '@/components/game/EnemySprite';
+import RabbitBurrow from '@/components/game/RabbitBurrow';
 import { attackSpeedLabel, ENEMY_CONFIG, GAME_CONFIG, UNIT_CONFIG, rangeLabel } from '@/lib/game/config';
 import { advanceGame, applySpawnCommand, createInitialGameState, createSpawnCommand, startGame } from '@/lib/game/engine';
 import type { AttackStyle } from '@/lib/game/config';
@@ -76,6 +77,7 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
   const remainingMs = state.phase === 'battle' ? GAME_CONFIG.stageDurationMs - state.stageElapsedMs : GAME_CONFIG.preparationDurationMs - state.phaseElapsedMs;
   const displayedBestStage = Math.max(bestStage, state.clearedStages);
   const visibleLogs = state.logs.slice(0, 3);
+  const battleTheme = Math.min(4, Math.ceil(state.stage / 5));
   const enemyCounts = useMemo(() => state.enemies.reduce<Record<string, number>>((counts, enemy) => {
     counts[enemy.key] = (counts[enemy.key] ?? 0) + 1;
     return counts;
@@ -149,26 +151,28 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
       </section>
 
       <section className="p-3 sm:p-4">
-        <div className="battlefield relative h-64 overflow-hidden rounded-[28px] border border-[#b5d8ba] bg-gradient-to-b from-[#bde7f4] via-[#d9f1df] to-[#8cc47f] shadow-inner dark:border-emerald-900 dark:from-[#173342] dark:via-[#17382b] dark:to-[#28502d]">
-          <div className="absolute left-5 top-5 h-10 w-16 rounded-full bg-white/70 blur-[1px] before:absolute before:-top-3 before:left-5 before:h-8 before:w-8 before:rounded-full before:bg-white/70" />
-          <div className="absolute inset-x-0 bottom-0 h-20 bg-[#77ad65]/75 dark:bg-[#204a2a]" />
-          <div className="absolute inset-x-0 bottom-14 h-1 bg-white/25" />
-          <div className="absolute bottom-10 right-1 z-10 flex h-24 w-20 items-center justify-center rounded-t-[50%] border-[5px] border-[#704226] bg-[#9b6238] shadow-lg" aria-label="토끼굴"><div className="h-14 w-11 rounded-t-full bg-[#312018] shadow-inner"><span className="absolute -top-6 right-1 text-3xl">🌿</span></div></div>
+        <div className={`battlefield battle-theme-${battleTheme} relative h-64 overflow-hidden rounded-[28px] border shadow-inner`}>
+          <div className="battle-sky-decor" aria-hidden="true"><i /><i /><i /></div>
+          <div className="battle-horizon" aria-hidden="true" />
+          <div className="battle-ground" aria-hidden="true" />
+          <div className="rabbit-burrow absolute bottom-8 right-0 z-10 h-32 w-28"><RabbitBurrow /></div>
 
           {state.enemies.map((enemy) => {
             const config = ENEMY_CONFIG[enemy.key as EnemyKey];
             const boss = enemy.key === 'dragon';
-            return <div key={enemy.id} className={`game-combatant absolute bottom-14 z-20 -translate-x-1/2 transition-[left] duration-100 ${boss ? 'boss-enemy' : ''}`} style={{ left: `${enemy.x / 10}%` }}><div className={`${boss ? 'w-20' : 'w-10'} mx-auto mb-0.5 h-1 overflow-hidden rounded bg-black/20`}><div className={`h-full ${boss ? 'bg-gradient-to-r from-amber-400 via-red-500 to-fuchsia-700' : 'bg-red-500'}`} style={{ width: `${Math.max(0, enemy.hp / enemy.maxHp * 100)}%` }} /></div><div className="enemy-sprite drop-shadow-md" title={config.name}><EnemySprite enemy={enemy.key as EnemyKey} size={boss ? 88 : 48} /></div>{boss && <span className="absolute -top-5 left-1/2 -translate-x-1/2 rounded-full bg-red-950/90 px-2 py-0.5 text-[8px] font-black tracking-widest text-amber-300 ring-1 ring-amber-400">BOSS</span>}{boss && state.stageElapsedMs < 20_000 && <div className="absolute -inset-3 -z-10 rounded-full border-2 border-cyan-200/80 bg-cyan-300/10 shadow-[0_0_24px_rgba(103,232,249,.85)]" />}</div>;
+            const attacking = state.totalElapsedMs - enemy.lastAttackAtMs < 700;
+            return <div key={enemy.id} className={`game-combatant enemy-combatant absolute bottom-14 z-20 -translate-x-1/2 transition-[left] duration-100 ${attacking ? 'is-enemy-attacking' : ''} ${boss ? 'boss-enemy' : ''}`} style={{ left: `${enemy.x / 10}%` }}><div className={`${boss ? 'w-20' : 'w-10'} mx-auto mb-0.5 h-1.5 overflow-hidden rounded-full bg-black/25 ring-1 ring-white/35`}><div className={`h-full ${boss ? 'bg-gradient-to-r from-amber-300 via-red-500 to-fuchsia-700' : 'bg-gradient-to-r from-rose-400 to-red-600'}`} style={{ width: `${Math.max(0, enemy.hp / enemy.maxHp * 100)}%` }} /></div><div className="enemy-sprite drop-shadow-md" title={config.name}><EnemySprite enemy={enemy.key as EnemyKey} size={boss ? 92 : 50} /></div>{attacking && <span className={`enemy-attack-effect ${boss ? 'boss-fire-breath' : ''}`} aria-hidden="true">{boss ? '🔥' : '✦'}</span>}{boss && <span className="absolute -top-6 left-1/2 -translate-x-1/2 rounded-full bg-red-950/90 px-2 py-0.5 text-[8px] font-black tracking-widest text-amber-300 ring-1 ring-amber-400">BOSS</span>}{boss && state.stageElapsedMs < 20_000 && <div className="absolute -inset-3 -z-10 rounded-full border-2 border-cyan-200/80 bg-cyan-300/10 shadow-[0_0_24px_rgba(103,232,249,.85)]" />}</div>;
           })}
 
           {state.allies.map((ally) => {
             const config = UNIT_CONFIG[ally.key as UnitKey];
-            const attacking = state.totalElapsedMs - ally.lastAttackAtMs < 300;
+            const attacking = state.totalElapsedMs - ally.lastAttackAtMs < 650;
+            const healing = config.unitClass === '힐러';
             return (
               <div key={ally.id} className={`game-combatant absolute bottom-11 z-30 -translate-x-1/2 transition-[left] duration-100 ${attacking ? 'is-attacking' : ''}`} style={{ left: `${ally.x / 10}%`, ['--unit-color' as string]: config.color, ['--attack-distance' as string]: `${Math.max(30, Math.round(config.range / 2.8))}px` }}>
                 <div className="mx-auto mb-0.5 h-1 w-10 overflow-hidden rounded bg-black/20"><div className="h-full" style={{ width: `${Math.max(0, ally.hp / ally.maxHp * 100)}%`, backgroundColor: config.color }} /></div>
                 <div className="game-bunny origin-bottom"><TierBunny tier={config.tier} costume={config.costume} size={54} /></div>
-                {attacking && <span className={`attack-effect attack-${config.attackStyle} ${ally.key === 'santa' ? 'healing-effect' : ''}`} aria-hidden="true">{ally.key === 'santa' ? '✦' : ATTACK_MARK[config.attackStyle]}</span>}
+                {attacking && <><span className={`attack-effect attack-${config.attackStyle} ${healing ? 'healing-effect' : ''}`} aria-hidden="true">{healing ? '✦' : ATTACK_MARK[config.attackStyle]}</span><span className={`attack-impact ${healing ? 'heal-impact' : ''}`} aria-hidden="true">{healing ? '+' : '✹'}</span></>}
               </div>
             );
           })}
@@ -192,7 +196,7 @@ export default function GameClient({ nickname, tierLabel, unlockedUnits, initial
             const unit = UNIT_CONFIG[key];
             const disabled = !['battle', 'preparation'].includes(state.phase) || state.carrots < unit.cost || state.allies.length >= GAME_CONFIG.maxAllies;
             const classColor = unit.unitClass === '탱커' ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200' : unit.unitClass === '힐러' ? 'bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300' : unit.unitClass === '원거리' ? 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300' : 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300';
-            return <button key={key} type="button" disabled={disabled} onClick={() => spawn(key)} className="group relative w-[116px] shrink-0 overflow-hidden rounded-2xl border border-stone-200 bg-white px-2 pb-2 pt-1.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 disabled:cursor-not-allowed disabled:opacity-40 dark:border-stone-700 dark:bg-stone-900"><span className={`absolute left-1.5 top-1.5 rounded-full px-1.5 py-0.5 text-[8px] font-black ${classColor}`}>{unit.unitClass}</span><div className="mx-auto h-[62px] overflow-hidden"><TierBunny tier={unit.tier} costume={unit.costume} size={64} /></div><span className="block truncate text-[11px] font-black" style={{ color: unit.color }}>{unit.name}</span><span className="mt-0.5 block text-[10px] font-black text-orange-500">🥕 {unit.cost}</span><span className="mt-1 block text-[8px] font-bold text-gray-400">{unit.attack > 0 ? `공격 ${unit.attack}` : '공격 안 함'} · HP {unit.hp}</span><span className="mt-0.5 block text-[8px] font-black text-violet-600 dark:text-violet-400">{unit.attack > 0 ? `공속 ${attackSpeedLabel(unit.attackIntervalMs)}` : '5초마다 회복'}</span><span className="mt-0.5 block text-[8px] font-black text-sky-600 dark:text-sky-400">{rangeLabel(unit.range)} · {unit.range}</span><span className="mt-1 block min-h-6 text-[8px] font-semibold leading-tight text-gray-500 dark:text-gray-400">{unit.role}</span></button>;
+            return <button key={key} type="button" disabled={disabled} onClick={() => spawn(key)} className="group relative w-[116px] shrink-0 overflow-hidden rounded-2xl border border-stone-200 bg-white px-2 pb-2 pt-1.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 disabled:cursor-not-allowed disabled:opacity-40 dark:border-stone-700 dark:bg-stone-900"><span className={`absolute left-1.5 top-1.5 rounded-full px-1.5 py-0.5 text-[8px] font-black ${classColor}`}>{unit.unitClass}</span><div className="mx-auto h-[62px] overflow-hidden"><TierBunny tier={unit.tier} costume={unit.costume} size={64} /></div><span className="block truncate text-[11px] font-black" style={{ color: unit.color }}>{unit.name}</span><span className="mt-0.5 block text-[10px] font-black text-orange-500">🥕 {unit.cost}</span><span className="mt-1 block text-[8px] font-bold text-gray-400">{unit.attack > 0 ? `공격 ${unit.attack}` : `회복 ${unit.healAmount}`} · HP {unit.hp}</span><span className="mt-0.5 block text-[8px] font-black text-violet-600 dark:text-violet-400">{unit.attack > 0 ? `공속 ${attackSpeedLabel(unit.attackIntervalMs)}` : `${(unit.healIntervalMs ?? 0) / 1000}초마다 회복`}</span><span className="mt-0.5 block text-[8px] font-black text-sky-600 dark:text-sky-400">{rangeLabel(unit.range)} · {unit.range}</span><span className="mt-1 block min-h-6 text-[8px] font-semibold leading-tight text-gray-500 dark:text-gray-400">{unit.role}</span></button>;
           })}
           </div>
         </div>

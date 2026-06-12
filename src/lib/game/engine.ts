@@ -94,11 +94,11 @@ function foremostEnemy(enemies: Combatant[]) {
 
 function runMovement(state: GameState, dtSeconds: number) {
   for (const ally of state.allies) {
-    if (ally.key === 'santa') {
-      const frontAllies = state.allies.filter((unit) => unit.key !== 'santa');
+    if (UNIT_CONFIG[ally.key as UnitKey].unitClass === '힐러') {
+      const frontAllies = state.allies.filter((unit) => UNIT_CONFIG[unit.key as UnitKey].unitClass !== '힐러');
       const frontline = [...frontAllies].sort((a, b) => a.x - b.x)[0];
       const supportX = Math.min(GAME_CONFIG.burrowX - 45, (frontline?.x ?? GAME_CONFIG.burrowX - 140) + 105);
-      const step = UNIT_CONFIG.santa.speed * dtSeconds;
+      const step = UNIT_CONFIG[ally.key as UnitKey].speed * dtSeconds;
       ally.x = ally.x < supportX ? Math.min(supportX, ally.x + step) : Math.max(supportX, ally.x - step);
       continue;
     }
@@ -125,7 +125,7 @@ function runCombat(state: GameState, tickMs: number) {
   let burrowDamage = 0;
   const princessCount = state.allies.filter((ally) => ally.key === 'princess').length;
   const costumeCount = state.allies.filter((ally) => UNIT_CONFIG[ally.key as UnitKey].costume).length;
-  const partyDamageMultiplier = 1 + Math.min(princessCount * 0.06 + costumeCount * 0.025, 0.45);
+  const partyDamageMultiplier = 1 + Math.min(princessCount * 0.08 + costumeCount * 0.02, 0.4);
 
   for (const unit of [...state.allies, ...state.enemies]) {
     unit.attackCooldownMs = Math.max(0, unit.attackCooldownMs - tickMs);
@@ -167,30 +167,32 @@ function runCombat(state: GameState, tickMs: number) {
   for (const combatant of [...state.allies, ...state.enemies]) {
     const rawDamage = damage.get(combatant.id) ?? 0;
     const isShieldedDragon = combatant.key === 'dragon' && state.stageElapsedMs < 20_000;
-    const unitDamage = combatant.key === 'samurai'
-      ? Math.floor(rawDamage * 0.55)
-      : combatant.key === 'ninja'
-        ? Math.floor(rawDamage * 0.75)
-        : rawDamage;
+    const allyConfig = combatant.id.startsWith('ally-') ? UNIT_CONFIG[combatant.key as UnitKey] : null;
+    const unitDamage = Math.floor(rawDamage * (1 - (allyConfig?.damageReduction ?? 0)));
     combatant.hp -= isShieldedDragon ? Math.floor(unitDamage * 0.7) : unitDamage;
   }
   state.burrowHp = Math.max(0, state.burrowHp - burrowDamage);
 
-  if (princessCount > 0 && state.totalElapsedMs % 4_000 < tickMs) {
-    const heal = princessCount * 3;
-    for (const ally of state.allies) ally.hp = Math.min(ally.maxHp, ally.hp + heal);
+  if (princessCount > 0 && state.totalElapsedMs % UNIT_CONFIG.princess.healIntervalMs! < tickMs) {
+    const heal = princessCount * UNIT_CONFIG.princess.healAmount!;
+    const wounded = state.allies
+      .filter((ally) => ally.hp < ally.maxHp)
+      .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))
+      .slice(0, UNIT_CONFIG.princess.healTargets! * princessCount);
+    for (const ally of wounded) ally.hp = Math.min(ally.maxHp, ally.hp + heal);
+    for (const princess of state.allies.filter((ally) => ally.key === 'princess')) princess.lastAttackAtMs = state.totalElapsedMs;
   }
 
   const santaCount = state.allies.filter((ally) => ally.key === 'santa').length;
-  if (santaCount > 0 && state.totalElapsedMs % 5_000 < tickMs) {
-    const heal = santaCount * 8;
+  if (santaCount > 0 && state.totalElapsedMs % UNIT_CONFIG.santa.healIntervalMs! < tickMs) {
+    const heal = santaCount * UNIT_CONFIG.santa.healAmount!;
     const frontline = state.allies
       .filter((ally) => ally.key !== 'santa' && ally.hp < ally.maxHp)
       .sort((a, b) => a.x - b.x)
-      .slice(0, 3 * santaCount);
+      .slice(0, UNIT_CONFIG.santa.healTargets! * santaCount);
     for (const ally of frontline) ally.hp = Math.min(ally.maxHp, ally.hp + heal);
     for (const santa of state.allies.filter((ally) => ally.key === 'santa')) santa.lastAttackAtMs = state.totalElapsedMs;
-    state.burrowHp = Math.min(GAME_CONFIG.burrowMaxHp, state.burrowHp + Math.min(8, santaCount * 2));
+    state.burrowHp = Math.min(GAME_CONFIG.burrowMaxHp, state.burrowHp + Math.min(12, santaCount * 6));
   }
 
   const defeatedEnemies = state.enemies.filter((enemy) => enemy.hp <= 0);
